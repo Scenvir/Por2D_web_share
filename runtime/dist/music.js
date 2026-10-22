@@ -3,9 +3,9 @@
 class Por2Music {
   constructor(volume) {
     this.volume = volume;
-    document.addEventListener('visibilitychange', () => this.sync());
+    document.addEventListener('visibilitychange', () => document.hidden ? this.sync() : this.unlock());
     window.addEventListener('pagehide', () => this.context?.suspend().catch(() => {}));
-    window.addEventListener('pageshow', () => this.sync());
+    window.addEventListener('pageshow', () => this.unlock());
   }
   unlock() {
     if (document.hidden || !this.volume) return;

@@ -51,6 +51,8 @@
   Por2I18n.setLanguage(prefs.language);
   const shotAudio = new Por2ShotAudio(prefs.volume);
   const music = new Por2Music(prefs.musicVolume);
+  // Start on page load; gestures retry if the browser blocks audible autoplay.
+  music.unlock();
   document.addEventListener('pointerdown',() => music.unlock(),{capture:true});
   document.addEventListener('keydown',() => music.unlock(),{capture:true});
   document.addEventListener('pointerdown',() => shotAudio.unlock(),{capture:true});
