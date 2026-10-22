@@ -1,0 +1,70 @@
+name: Package and release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'New release tag, for example v2026.10.23'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Validate release tag
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9][A-Za-z0-9._-]*$ ]]; then
+            echo 'Use a tag starting with v and a digit, followed by letters, digits, dots, underscores or hyphens.' >&2
+            exit 1
+          fi
+          printf 'RELEASE_TAG=%s\n' "$RELEASE_TAG" >> "$GITHUB_ENV"
+      - name: Package and verify ZIP
+        run: python3 tools/package_release.py
+      - name: Prepare release notes
+        run: |
+          cat > release/notes.md <<'EOF'
+          ## 中文
+          下载 `Por2D-Web-Coop-Share.zip`，完整解压后按 `START-HERE.txt` 启动。
+          房主需要 Node.js 22 或更新版本，队友只需浏览器，无需 npm install。
+          包含游戏运行文件、玩家说明和 developer/ 接口资料。
+          自动检查文件 SHA-256、ZIP 完整性及打包内容一致性；未执行游戏启动或回归测试。
+
+          ## English
+          Download `Por2D-Web-Coop-Share.zip`, extract it completely, and follow README.md.
+          The host needs Node.js 22 or newer; other players only need a browser. No npm install required.
+          Includes the game runtime, player guides, and developer/ interface documentation.
+          File hashes, ZIP integrity, and packaged contents are verified automatically; gameplay and launch tests are not run.
+          EOF
+          printf '\nCommit: `%s`\n' "$GITHUB_SHA" >> release/notes.md
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == workflow_dispatch ]] && gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" > /dev/null 2>&1; then
+            echo 'Manual releases require a new, unused tag.' >&2
+            exit 1
+          fi
+          # Existing releases are never overwritten. Failed uploads leave a draft.
+          gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --draft \
+            --title "Por2D Web $RELEASE_TAG" --notes-file release/notes.md
+          gh release upload "$RELEASE_TAG" release/Por2D-Web-Coop-Share.zip release/Por2D-Web-Coop-Share.zip.sha256
+          gh release edit "$RELEASE_TAG" --draft=false --latest
