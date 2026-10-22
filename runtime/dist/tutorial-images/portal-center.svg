@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="360" viewBox="0 0 840 360" role="img" aria-label="瞄准三格门：射线命中预定门段的中间格">
+<rect width="840" height="360" rx="16" fill="#111817"/>
+<style>text{font-family:system-ui,'Microsoft YaHei',sans-serif;fill:#e4ece8;font-size:19px}.note{fill:#aabdb4;font-size:16px}.title{font-size:24px;font-weight:700}</style>
+<text x="28" y="40" class="title">瞄准三格门：射线命中预定门段的中间格</text>
+<rect x="185" y="85" width="70" height="70" fill="#e4e9e6" stroke="#53615a" stroke-width="2"/>
+<rect x="185" y="155" width="70" height="70" fill="#b4ddff" stroke="#53615a" stroke-width="2"/>
+<rect x="185" y="225" width="70" height="70" fill="#e4e9e6" stroke="#53615a" stroke-width="2"/>
+<path d="M265 90V290" stroke="#52a9ff" stroke-width="8"/>
+<path d="M550 245L255 190l18 -5m-18 5 14 11" stroke="#91d7ae" stroke-width="3" fill="none"/>
+<circle cx="255" cy="190" r="7" fill="#91d7ae"/>
+<text x="300" y="112">上格：预定门段的一端</text>
+<text x="300" y="175">中间格：瞄准这里</text>
+<text x="300" y="288">下格：预定门段的另一端</text>
+<text x="565" y="240">射击起点</text>
+<text x="565" y="268" class="note">按 F2 显示网格</text>
+<text x="28" y="337" class="note">操作示意图 · 非游戏截图</text></svg>

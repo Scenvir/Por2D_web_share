@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="360" viewBox="0 0 840 360" role="img" aria-label="第一对门：左右白墙，相近高度">
+<rect width="840" height="360" rx="16" fill="#111817"/>
+<style>text{font-family:system-ui,'Microsoft YaHei',sans-serif;fill:#e4ece8;font-size:19px}.note{fill:#aabdb4;font-size:16px}.title{font-size:24px;font-weight:700}</style>
+<text x="28" y="40" class="title">第一对门：左右白墙，相近高度</text>
+<path d="M90 95V265H750V95" fill="none" stroke="#e4e9e6" stroke-width="22"/>
+<path d="M103 175V255" stroke="#52a9ff" stroke-width="10"/><path d="M737 175V255" stroke="#ffab45" stroke-width="10"/>
+<rect x="190" y="182" width="36" height="72" fill="#f4d653"/><rect x="203" y="189" width="10" height="10" fill="#665317"/><rect x="645" y="182" width="36" height="72" fill="#f4d653"/><rect x="658" y="189" width="10" height="10" fill="#665317"/>
+<path d="M188 222H125l14 -8m-14 8 14 8M725 222H680l14 -8m-14 8 14 8" stroke="#91d7ae" stroke-width="3" fill="none"/>
+<text x="135" y="118">左键松开 → 蓝门</text><text x="490" y="118">右键松开 → 橙门</text>
+<text x="260" y="164" class="note">先确认两扇门都出现，再向左走入蓝门</text>
+<text x="260" y="204" class="note">右侧黄色角色表示穿出后的示意位置</text>
+<text x="244" y="300">靠近地面放置，让角色能走进门口</text>
+<text x="28" y="337" class="note">操作示意图 · 非游戏截图</text></svg>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="360" viewBox="0 0 840 360" role="img" aria-label="出口对齐：先松开，再微调，最后按 E">
+<rect width="840" height="360" rx="16" fill="#111817"/>
+<style>text{font-family:system-ui,'Microsoft YaHei',sans-serif;fill:#e4ece8;font-size:19px}.note{fill:#aabdb4;font-size:16px}.title{font-size:24px;font-weight:700}</style>
+<text x="28" y="40" class="title">出口对齐：先松开，再微调，最后按 E</text>
+<path d="M30 245H810" stroke="#ddd" stroke-width="10"/>
+<rect x="130" y="168" width="42" height="77" fill="#6c7671"/><rect x="187" y="173" width="36" height="72" fill="#f4d653"/><rect x="200" y="180" width="10" height="10" fill="#665317"/>
+<text x="48" y="90">① 走过头：短按 A 向左退</text><path d="M220 140H150l15 -8m-15 8 15 8" fill="none" stroke="#8ec6ff" stroke-width="3"/>
+<rect x="399" y="168" width="42" height="77" fill="#6c7671"/><rect x="402" y="173" width="36" height="72" fill="#f4d653"/><rect x="415" y="180" width="10" height="10" fill="#665317"/>
+<text x="310" y="90">② 身体与灰色出口重合</text>
+<rect x="671" y="168" width="42" height="77" fill="#6c7671"/><rect x="674" y="173" width="36" height="72" fill="#f4d653"/><rect x="687" y="180" width="10" height="10" fill="#665317"/>
+<text x="595" y="90">③ 头朝向一致，按 E</text>
+<text x="69" y="285" class="note">小幅点按，避免来回冲过头</text>
+<text x="385" y="285" class="note">深色小点表示头部</text><text x="636" y="285" class="note">关卡编号变化才算通过</text>
+<text x="28" y="337" class="note">操作示意图 · 非游戏截图</text></svg>

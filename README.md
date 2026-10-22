@@ -12,7 +12,7 @@
 
 **[下载最新分享包](https://github.com/Scenvir/Por2D_web_share/releases/latest/download/Por2D-Web-Coop-Share.zip)** · [全部版本](https://github.com/Scenvir/Por2D_web_share/releases)
 
-请选择 Release 附件中的 `Por2D-Web-Coop-Share.zip`。GitHub 自动生成的 **Source code** 压缩包不包含可玩的游戏。
+推荐下载 Release 附件中的 `Por2D-Web-Coop-Share.zip`。也可以使用本仓库的 **Code → Download ZIP** 下载当前运行文件，完整解压后按相同步骤启动。旧版本 Release 中自动生成的 **Source code** 压缩包可能不包含运行文件，请选择上述分享包附件。
 
 ### 开始游玩
 
@@ -58,7 +58,7 @@ node runtime/server.cjs --host 0.0.0.0 --port 8000
 
 [报告问题](https://github.com/Scenvir/Por2D_web_share/issues)时，请附上版本、操作系统、浏览器及复现步骤。
 
-本仓库提供游戏分享包、玩家下载与启动说明。源码暂不公开。
+本仓库提供游戏运行文件、启动脚本和玩家说明。详细操作见 [游玩指南](PLAYER-GUIDE.md)，首次启动见 [START-HERE.txt](START-HERE.txt)。
 
 ## English
 
@@ -68,7 +68,7 @@ Explore puzzles with a blue and an orange portal. Align your character with the 
 
 **[Download the latest game bundle](https://github.com/Scenvir/Por2D_web_share/releases/latest/download/Por2D-Web-Coop-Share.zip)** · [All releases](https://github.com/Scenvir/Por2D_web_share/releases)
 
-Choose `Por2D-Web-Coop-Share.zip` from the release assets. GitHub's automatically generated **Source code** archives do not contain the playable game.
+The recommended download is `Por2D-Web-Coop-Share.zip` from the release assets. You can also use **Code → Download ZIP** to download the current runtime files from this repository, extract everything, and follow the same launch steps. Automatically generated **Source code** archives on older releases may lack the runtime files; choose the game bundle attachment instead.
 
 ### Getting started
 
@@ -114,4 +114,4 @@ Movement in Chapter 3 depends on gravity; see the in-game tutorial. Settings, pr
 
 When [reporting an issue](https://github.com/Scenvir/Por2D_web_share/issues), include the release version, operating system, browser, and steps to reproduce it.
 
-This repository provides game bundles, player downloads, and launch instructions. The source code is not currently public.
+This repository provides game runtime files, launch scripts, and player documentation. See the [player guide](PLAYER-GUIDE.md) (Chinese) and [START-HERE.txt](START-HERE.txt) (Chinese) for more details.

@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111817">
+  <meta name="description" content="Por2D：用两扇传送门，重新理解空间。基础版浏览器游戏，支持键鼠与触控。">
+  <title>Por2D · 浏览器版</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111817'/%3E%3Cellipse cx='23' cy='32' rx='9' ry='21' fill='none' stroke='%236eacff' stroke-width='5'/%3E%3Cellipse cx='43' cy='32' rx='9' ry='21' fill='none' stroke='%23ffa35c' stroke-width='5'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="por2.js"></script>
+  <script defer src="coop.js"></script>
+  <script defer src="replay/script.js"></script>
+  <script defer src="shot-audio.js"></script>
+  <script defer src="music.js"></script>
+  <script defer src="i18n.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+<main id="app">
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Por2D 首页"><span class="mark" aria-hidden="true"><i></i><i></i></span><strong>Por2D<span class="edition">WEB</span></strong></a>
+    <span class="tagline">两扇门，无限种可能。</span>
+    <nav aria-label="游戏菜单"><button id="help-button" class="icon-button" disabled aria-label="玩法" title="玩法"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1 .7-1.5 1-1.5 2"/><path d="M12 16h.01"/></svg></button><button id="fullscreen-button" class="icon-button" aria-label="全屏" title="全屏"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></svg></button><button id="menu-button" class="menu-button icon-button" disabled aria-label="菜单（Esc）" title="菜单（Esc）"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 6h14M5 12h14M5 18h14"/></svg></button></nav>
+  </header>
+  <section class="game-shell" aria-label="游戏">
+    <div class="game-top"><div><span class="status-dot"></span><span id="level-label">正在加载游戏…</span></div><span id="mode-label">基础版 · 浏览器实验版</span></div>
+    <div id="stage">
+      <canvas id="game" width="1000" height="600" tabindex="0" aria-label="Por2D 游戏画面。A D 移动，W 跳跃，E 进入出口，鼠标左右键放置传送门。"></canvas>
+      <div id="tutorial-direction-legend" class="tutorial-overlay-text tutorial-text-panel" hidden><strong>黄色直箭头＝人物朝向</strong><span>蓝／橙弧箭头＝门朝向示意 · 不是运动轨迹</span></div>
+      <div id="tutorial-subchapter" class="tutorial-overlay-text tutorial-text-panel" role="status" aria-live="polite" hidden></div>
+      <div id="body-lesson-captions" class="tutorial-overlay-text" hidden>
+        <span id="body-lesson-title" class="lesson-caption tutorial-text-panel"></span>
+        <span id="body-lesson-size" class="lesson-caption tutorial-text-panel"></span>
+        <span id="body-lesson-note" class="lesson-caption tutorial-text-panel"></span>
+      </div>
+      <div id="loading" class="stage-message"><span class="spinner"></span><strong>正在连接两扇门</strong><p id="load-status">加载游戏核心…</p></div>
+      <div id="pause-badge" hidden>已暂停</div>
+      <div id="shot-feedback" role="status" aria-live="polite" hidden></div>
+      <div id="checkpoint-feedback" role="status" aria-live="polite" hidden></div>
+      <button id="stage-menu-button" class="icon-button" hidden aria-label="打开菜单" title="打开菜单"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 6h14M5 12h14M5 18h14"/></svg></button>
+    </div>
+    <div class="game-bottom"><span id="game-status">移动到出口，并让头部朝向与出口一致。</span><button id="checkpoint-button" class="icon-button" disabled aria-label="保存检查点（C）" title="保存检查点（C）：所有角色在传送门外静止 25 帧（正常速度 0.625 秒）"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 21V3m0 1c5-4 9 4 14 0v10c-5 4-9-4-14 0"/></svg></button><button id="restart-button" class="icon-button" disabled aria-label="返回检查点／重试（R）" title="返回检查点／重试（R）"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 10a8 8 0 1 1 1 7M4 4v6h6"/></svg></button></div>
+  </section>
+  <section id="touch-controls" aria-label="触控操作">
+    <div class="touch-group"><button data-hold="left" aria-label="向左移动" title="向左移动"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 12H5m7-7-7 7 7 7"/></svg></button><button data-hold="right" aria-label="向右移动" title="向右移动"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14m-7-7 7 7-7 7"/></svg></button></div>
+    <div class="touch-group"><button id="switch-player" hidden aria-label="切换角色（Ctrl）" title="切换角色（Ctrl）"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8h16l-4-4M20 16H4l4 4"/></svg></button><button id="spectator-button" hidden aria-label="观察" title="观察"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+    <div class="portal-group"><button data-portal="0" class="blue active" aria-pressed="true" aria-label="蓝色传送门" title="蓝色传送门"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><ellipse cx="12" cy="12" rx="6" ry="9"/><path d="M10 6c-2 2-2 6-2 7"/></svg></button><button data-portal="1" class="orange" aria-pressed="false" aria-label="橙色传送门" title="橙色传送门"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><ellipse cx="12" cy="12" rx="6" ry="9"/><path d="M14 18c2-2 2-6 2-7"/></svg></button></div>
+    <div class="touch-group"><button data-hold="exit" aria-label="交互 / 进入出口" title="交互 / 进入出口"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 4H4v16h6m-1-8h12m-5-5 5 5-5 5"/></svg></button><button data-hold="jump" class="jump" aria-label="跳跃" title="跳跃"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20V4m-7 7 7-7 7 7"/></svg></button><button data-key="KeyS" aria-label="模拟 S 键" title="模拟 S 键"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v16m-7-7 7 7 7-7"/></svg></button></div>
+  </section>
+  <div id="coop-bar" class="extra-bar" hidden><button id="coop-status" aria-label="房间状态与玩家管理"></button><button id="chat-open">聊天</button><button id="coop-leave">离开房间</button></div>
+  <div id="tutorial-bar" class="extra-bar" hidden><span id="tutorial-label"></span><button id="tutorial-prev">上一段</button><button id="tutorial-pause">暂停</button><button id="tutorial-practice">亲自试试</button><button id="tutorial-reset">重练本段</button><button id="tutorial-height" hidden>改从低处起步</button><button id="tutorial-next">下一段</button><button id="tutorial-exit">返回游戏</button><p id="tutorial-chapter-note" hidden></p><p id="tutorial-text" role="status"></p></div>
+  <footer class="footer"><div class="desktop-hints"><span><kbd>A</kbd><kbd>D</kbd> 移动</span><span><kbd>W</kbd> 跳跃</span><span><kbd>E</kbd> 交互</span><span><i class="blue-dot"></i> 左键 / <i class="orange-dot"></i> 右键 放门</span><span><kbd>Q</kbd> 预览</span></div><span class="touch-hint">选择门颜色 → 在画面上拖动瞄准 → 松手发射 · 推荐横屏</span><span class="footer-note">空间会变，规则依旧。</span></footer>
+  <p id="notice" role="status" aria-live="polite"></p>
+  <noscript>请启用 JavaScript 后运行游戏。</noscript>
+
+  <dialog id="menu" aria-labelledby="menu-title">
+    <div class="dialog-head"><span class="eyebrow">POR2D / WEB EDITION</span><button id="close-menu" aria-label="关闭菜单">✕</button></div>
+    <section id="home-panel" class="panel">
+      <h1 id="menu-title">换个入口，<br><span>找到出口。</span></h1>
+      <p id="menu-intro" class="intro">在二维世界里，用一对传送门连接空间。</p>
+      <div class="home-actions"><button id="play-button" class="primary" disabled>开始游戏 <span>↗</span></button><button id="resume-button" class="primary" hidden>继续游戏</button><button id="menu-restart" hidden>重试本关</button></div>
+      <div class="menu-grid"><button data-panel="levels">开始游戏 <span>选择关卡 · 开启冒险</span></button><button data-panel="settings">设置 <span>操作与显示</span></button><button data-panel="files">地图与回放 <span>导入 / 导出</span></button><button data-panel="help">玩法指南 <span>从这里开始</span></button></div>
+      <button class="coop-entry" data-panel="coop">多人联机 · 创建 / 加入房间</button>
+      <div class="home-foot"><span class="blue-dot"></span><span class="orange-dot"></span><span>基础版规则 · 键鼠 / 触控</span></div>
+    </section>
+<section id="levels-panel" class="panel" hidden><button class="back" data-panel="home">← 返回菜单</button><h2>选择章节与关卡</h2><label class="setting">战役章节 <select id="chapter"><option value="1">第一章 · 单人战役</option><option value="2">第二章 · 双角色合作</option><option value="3">第三章 · 重力机关</option></select></label><label class="setting">小节 <select id="chapter-section"><option value="campaign">战役</option><option value="1">小节 1</option></select></label><p id="chapter-description" class="muted"></p><div id="level-list" class="level-list"></div><div id="section-list" class="level-list" hidden></div><p id="section-empty" class="muted" hidden>本小节暂无地图。</p></section>
+    <section id="coop-panel" class="panel" hidden>
+      <button class="back" data-panel="home">← 返回菜单</button><h2>多人联机房间</h2>
+      <p class="muted">房间最多 8 人，操作席上限等于关卡角色数。观战玩家可选择空闲角色进入操作席；操作玩家可随时进入观战席，释放角色。观战玩家不会自动接手角色。</p>
+      <p class="muted">双人地图中角色会互相阻挡，也可以站在队友身上，两人均通过才进入下一关。打开菜单或失焦只清除你的操作，游戏不暂停；任一玩家可在设置中修改双方速率。各自显示自己的瞄准预览，双方都能看到射线。</p>
+      <p class="muted">无需等待队友即可开始。有空闲角色时，操作玩家可按 Ctrl 切换；观战玩家可选择空闲角色进入操作席。创建时可填写 1–16 位字母、数字、横线或下划线编号，留空随机生成。</p>
+      <div class="row"><button id="coop-create" class="primary">创建房间</button><input id="coop-code" aria-label="房间码" placeholder="自定义 / 加入房间编号" maxlength="16" autocomplete="off"><button id="coop-join">加入房间</button></div>
+      <p id="coop-room" class="muted" role="status"></p><select id="coop-role" aria-label="选择操作角色" hidden></select><button id="coop-seat" hidden>进入观战席</button><button id="chat-menu-open" hidden>房间聊天</button><button id="coop-menu-leave" hidden>离开房间</button>
+      <div id="room-management" hidden><h3>房间玩家</h3><p id="room-access" class="muted"></p><button id="room-lock" hidden>锁定房间</button><p class="muted small">房主可踢出玩家；踢出后自动锁房，阻止重新加入。房主离开后由列表中的下一位玩家接任。</p><div id="room-members"></div></div>
+    </section>
+    <section id="settings-panel" class="panel" hidden><button class="back" data-panel="home">← 返回菜单</button><h2>按你的方式游玩</h2>
+      <label class="setting">语言 <select id="language"><option value="zh-CN">简体中文</option><option value="en">English</option></select></label>
+      <label class="setting">运行速度 <select id="speed"><option value="1.25">1.25×</option><option value="1" selected>1.0× · 正常</option><option value="0.8">0.8×</option><option value="0.5">0.5×</option><option value="0.1">0.1×</option></select></label>
+      <label class="setting">放门预览 <input id="preview" type="checkbox" checked></label>
+      <label class="setting">放门错误提示 <input id="shotFeedback" type="checkbox" checked></label>
+      <label class="setting">全局门方向（T） <input id="wallDirections" type="checkbox"></label>
+      <p class="muted">淡灰箭头显示当前姿态下各可开门面的方向，忽略射线遮挡和已有门；双面分别标记。</p>
+      <label class="setting">放门音量 <input id="volume" type="range" min="0" max="100" step="1" value="50"><output id="volume-value" for="volume">50%</output></label>
+      <button id="sound-preview" type="button">试听放门音效</button>
+      <label class="setting">背景音乐音量 <input id="music-volume" type="range" min="0" max="100" step="1" value="30"><output id="music-volume-value" for="music-volume">30%</output></label>
+      <label class="setting">显示头部标记 <input id="debug" type="checkbox" checked></label>
+      <label class="setting">辅助网格 <input id="grid" type="checkbox"></label>
+      <label class="setting">显示已解锁皇冠 <input id="crown" type="checkbox" checked></label>
+      <label class="setting">显示触控按钮 <select id="touch-mode"><option value="auto">自动</option><option value="on">始终显示</option><option value="off">隐藏</option></select></label>
+      <h3>键盘操作</h3><p class="muted">点击键位后按新键，Esc 取消。鼠标左右键始终可放门。</p><div id="bindings" class="bindings"></div><button id="reset-bindings">恢复默认键位</button>
+      <p class="muted small">设置和已到达关卡保存在当前浏览器。清除网站数据会移除这些记录；当前关卡中的位置不自动保存。</p>
+    </section>
+<section id="files-panel" class="panel" hidden><button class="back" data-panel="home">← 返回菜单</button><h2>创造，也可以重放</h2><h3>自定义地图</h3><p class="muted">导入基础版编辑器的 JSON 地图。地图记录保存在当前浏览器，也请保留原文件。</p><div class="row"><button id="import-map">导入地图 JSON</button><button id="example-map">试玩示例地图</button><a class="button" href="editor/" target="_blank" rel="noopener">打开地图编辑器 ↗</a></div><p class="muted">点击地图开始游玩；已在联机房间时，房主选图后所有玩家一起游玩。</p><button id="manage-maps" aria-pressed="false">管理地图</button><div id="custom-list" class="level-list map-list"></div>
+      <h3>服务器地图</h3><p class="muted">Node 服务会列出 dist/levels 中的有效 JSON 地图。编辑器“加入可玩列表”保存到本浏览器上方列表；地图按声明的单人或双人人数游玩，也可创建最多 8 人的联机房间。</p><div id="server-map-list" class="level-list map-list"></div>
+      <h3>录制与回放</h3><p class="muted">本地录制会从当前关卡起点重新开始；联机录制保留本次同步以来的操作，不重置游戏。停止后导出脚本；所有章节的回放均在播放器中打开，可暂停、逐帧、调速和回看。</p><div class="row"><button id="record-button">开始录制</button><a id="import-replay" class="button" href="replay/" target="_blank" rel="noopener">打开回放播放器 ↗</a><button id="export-recording" disabled>再次导出上次录制</button></div><p id="record-status" class="muted"></p>
+    </section>
+<section id="help-panel" class="panel" hidden><button class="back" data-panel="home">← 返回菜单</button><h2>先走到出口，再试试传送门。</h2>
+<ol class="help-list">
+<li><strong>先抵达出口</strong><p>默认用 A / D 左右移动，W 跳跃。找到灰色出口，让角色的位置和头部朝向与它匹配，再按 E 尝试通关。靠近目标时松开方向键，用短按微调。操作键可以在设置中修改。</p><p>第三章中，接触重力机关并按交互键（默认 E）可改变重力方向；可以进入出口时优先进门。W / A / S / D 对应屏幕上 / 左 / 下 / 右：逆重力方向跳跃，垂直重力方向移动，顺重力方向无效果。</p></li>
+<li><strong>放置一对传送门</strong><p>把鼠标指向白色墙面，观察放门预览，再单击左键放蓝门、右键放橙门。每扇门需要连续三格墙面，射线要命中中间一格。出现红叉时，检查遮挡，或换个位置瞄准。深色墙面不能放门。</p></li>
+<li><strong>用 Q 和 T 辅助瞄准</strong><p>默认按 Q 开关当前瞄准位置的放门预览：看射线、三格轮廓，以及蓝／橙箭头或红叉，判断此刻能放哪种门。按 T 开关全局门方向提示，观察朝向射击起点的墙面上可能的门朝向；它不代表当前射线一定能到达，也不保证此刻能放门。先用 T 比较方向，再用 Q 检查具体位置；两者独立开关，只显示提示，不会放门。改键后以设置为准。</p></li>
+<li><strong>照着做：比较不同朝向</strong><p>在“放门并穿过”的亲自练习中，保持头朝上，开启 Q 瞄准左侧白墙中间格，观察向上的箭头；再按 T 开启全局方向，关掉 Q，比较两种显示。“转向与对齐”中向左穿过已配好的门，再向右走到实心地面；头朝右时瞄准左侧白墙高于头部的空白墙段，箭头仍可向上。第 8 段“四向门预览”在四面白墙中自动轮换四种头部朝向，默认开启 T 提示；第 9 段专门展示亮暗端对应。</p></li>
+<li><strong>穿过后，先看身体</strong><p>穿门会改变身体的位置、朝向和速度方向；门的亮暗端表示对应关系。身体横过来时，要让整段身体对齐门口。可以在设置中降低运行速度，练习短按调整。到达出口却无法通过时，调整位置和朝向，再次按 E；按 R 可以重试。</p></li>
+<li><strong>先认身体，再亲自练习</strong><p>第一段展示身体尺寸、四种头朝向及跨门后的身体划分。第 2–6 段可点击“亲自试试”；远跳练习比较起步高度，探头练习观察实际头部点和主体侧锁门。最后两段比较四向门预览与亮暗端对应。练习不改变正式关卡进度。</p></li>
+<li><strong>触控操作</strong><p>用屏幕按钮移动、跳跃和进入出口。先选择蓝门或橙门，在画面上拖动瞄准，松手发射。</p></li>
+</ol><div class="row"><button id="tutorial-intro" class="primary">入门与进阶练习 · 九段演示 →</button></div><p class="muted">练习时可暂停、重练和换段。两扇门都存在才能传送，放门失败会保留原门并显示约 3 秒原因。身体或穿门另一端碰到地图边界会恢复检查点，未保存时重开。Esc 打开菜单；Q 切换放门预览；T 切换全局门方向；Z / X 向鼠标位置放门。单机游玩需要离开时，请先打开菜单暂停；联机打开菜单不会暂停游戏。</p><a href="tutorial.html" target="_blank" rel="noopener">三分钟上手 ↗</a>
+    </section>
+    <p id="menu-notice" role="status" aria-live="polite"></p>
+  </dialog>
+  <dialog id="chat" aria-labelledby="chat-title">
+    <div class="dialog-head"><h2 id="chat-title">房间聊天</h2><button id="chat-close" aria-label="关闭聊天">关闭</button></div>
+    <p class="muted small">聊天时游戏继续运行。每条最多 200 字，记录仅保留在当前房间。</p>
+    <div id="chat-log" role="log" aria-label="聊天记录" aria-live="polite"></div>
+    <form id="chat-form"><label for="chat-input">消息</label><div class="row"><input id="chat-input" maxlength="200" autocomplete="off" placeholder="输入消息，Enter 发送" required><button type="submit">发送</button></div></form>
+    <p id="chat-notice" role="status"></p>
+  </dialog>
+  <input type="file" id="map-file" accept=".json,application/json" hidden>
+</main>
+</body>
+</html>

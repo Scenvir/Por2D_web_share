@@ -1,0 +1,20 @@
+:root { color-scheme: dark; font-family: system-ui, "Microsoft YaHei", sans-serif; color: #e4ece8; background: #111817; }
+body { margin: 0 auto; max-width: 900px; padding: 24px clamp(16px, 4vw, 40px) 64px; line-height: 1.8; overflow-wrap: anywhere; }
+header { display: flex; flex-wrap: wrap; gap: 12px 32px; border-bottom: 1px solid #384640; padding-bottom: 16px; }
+a { color: #8ec6ff; text-underline-offset: 3px; }
+figure { margin: 24px 0; }
+figure img { display: block; width: 100%; height: auto; }
+figcaption { margin-top: 8px; color: #aabdb4; font-size: .9em; }
+a:focus-visible { outline: 2px solid #ffbd78; outline-offset: 4px; }
+h1, h2, h3 { line-height: 1.4; color: #fff; }
+h1 { font-size: clamp(1.6rem, 5vw, 2.2rem); }
+h2 { margin-top: 2.2em; border-bottom: 1px solid #384640; padding-bottom: .3em; }
+li { margin: .45em 0; }
+code { font-family: Consolas, monospace; background: #24312c; padding: .12em .3em; border-radius: 3px; }
+pre { overflow-x: auto; background: #0a100e; padding: 16px; border-radius: 8px; line-height: 1.5; }
+pre code { background: none; padding: 0; white-space: pre; overflow-wrap: normal; }
+.table-scroll { overflow-x: auto; margin: 1.2em 0; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #43534b; padding: 10px 12px; text-align: left; vertical-align: top; min-width: 7em; }
+th { background: #24312c; }
+@media print { :root { color-scheme: light; color: #111; background: #fff; } h1, h2, h3 { color: #111; } header { display: none; } }

@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Por2D 脚本播放器</title><link rel="stylesheet" href="viewer.css"></head>
+<body><main><header><a href="../">← 返回游戏</a><h1>回放播放器</h1><p>打开第一章或第二章回放，查看路线与传送门变化。</p></header>
+<section class="toolbar"><label class="file">打开回放<input id="file" type="file" accept=".txt,.replay,text/plain" disabled></label></section>
+<p id="notice" role="status">正在加载游戏核心…</p>
+<canvas id="game" width="1000" height="600" aria-label="回放画面"></canvas>
+<section class="toolbar"><button id="play" disabled>播放</button><button id="step" disabled>前进一帧</button><button id="reset" disabled>回到起点</button><label>速度 <select id="speed"><option value="1.25">1.25×</option><option value="1" selected>1×</option><option value="0.8">0.8×</option><option value="0.5">0.5×</option><option value="0.1">0.1×</option></select></label><label><input id="grid" type="checkbox">网格</label><span id="progress">0 / 0 帧</span></section>
+<input id="timeline" type="range" min="0" max="0" value="0" aria-label="回放帧" disabled>
+<section class="details"><div><h2>下一帧指令</h2><pre id="action">尚未载入脚本</pre><p>空格播放/暂停，句号前进一帧。拖动进度可回看；页面失焦时暂停。</p></div><div><h2>角色状态</h2><pre id="players"></pre></div></section>
+</main><script src="../por2.js"></script><script src="script.js"></script><script src="player.js"></script><script src="viewer.js"></script></body></html>

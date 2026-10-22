@@ -1,0 +1,21 @@
+Por2D Web — 首次游玩
+
+1. 完整解压 ZIP，不要在压缩包内运行。
+2. 主机安装 Node.js 22 或更新版本：https://nodejs.org/en/download
+   队友只需要浏览器。无需 npm install。
+3. Windows 双击 start-local.cmd；联机时改用 start-lan.cmd。
+   macOS / Linux 在解压目录打开终端：
+   本机：node runtime/server.cjs --host 127.0.0.1 --port 8000
+   联机：node runtime/server.cjs --host 0.0.0.0 --port 8000
+4. 浏览器打开 http://127.0.0.1:8000，点击“开始游戏”。
+   第一次玩先看菜单里的“玩法指南”，再选第一章 Level 0「概念」。
+5. 保持终端窗口开着；结束游玩后按 Ctrl+C 停止服务。
+
+操作与常见问题：README.md
+联机步骤与网络排查：如何双人联机.txt
+
+队友须打开房主实际局域网地址，不能使用 localhost、127.0.0.1 或 0.0.0.0。
+端口占用时先停止之前启动的服务，或将命令的 --port 改为 8001，
+浏览器地址也改为 http://127.0.0.1:8001。
+请通过上述 HTTP 地址游玩，不要直接打开 runtime/dist/index.html。
+runtime/ 是游戏运行所需文件，请保留完整目录。
