@@ -54,11 +54,11 @@ node runtime/server.cjs --host 0.0.0.0 --port 8000
 
 第三章的方向键行为随重力变化，详见游戏内教程。设置、进度和自定义地图保存在当前浏览器中；重要地图与录制请导出备份。
 
-### 反馈与源码
+### 反馈
 
 [报告问题](https://github.com/Scenvir/Por2D_web_share/issues)时，请附上版本、操作系统、浏览器及复现步骤。
 
-本仓库提供玩家下载与启动说明。[开发源码](https://github.com/Scenvir/Por2D_web)
+本仓库提供游戏分享包、玩家下载与启动说明。源码暂不公开。
 
 ## English
 
@@ -110,8 +110,8 @@ The default setup is for players on the same local network. A room code alone do
 
 Movement in Chapter 3 depends on gravity; see the in-game tutorial. Settings, progress, and custom maps are stored in your current browser. Export important maps and recordings for backup.
 
-### Feedback and source
+### Feedback
 
 When [reporting an issue](https://github.com/Scenvir/Por2D_web_share/issues), include the release version, operating system, browser, and steps to reproduce it.
 
-This repository provides player downloads and launch instructions. [Development source](https://github.com/Scenvir/Por2D_web)
+This repository provides game bundles, player downloads, and launch instructions. The source code is not currently public.
