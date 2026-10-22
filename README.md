@@ -60,16 +60,9 @@ node runtime/server.cjs --host 0.0.0.0 --port 8000
 
 本仓库提供游戏运行文件、启动脚本和玩家说明。详细操作见 [游玩指南](PLAYER-GUIDE.md)，首次启动见 [START-HERE.txt](START-HERE.txt)。
 
-### 接口资料与自动发布
+### 接口资料
 
 `developer/` 提供 [接口与回放规范](developer/SCRIPT_INTERFACE.md)、[接口指南](developer/开发与接口指南.md)及可运行示例：在仓库或解压包根目录执行 `node developer/agent_example.cjs`。
-
-维护者更新运行文件或说明后，先暂存新增文件，再运行 `python tools/package_release.py --refresh-manifest`，将更新后的 `SHA256.json` 一并提交。
-
-- 推送新的 `v*` 版本标签，或在 **Actions → Package and release → Run workflow** 输入新的版本号（例如 `v2026.10.23`），即可自动打包并发布 Release。
-- 工作流只打包本仓库的运行文件、玩家文档和 `developer/`，不重新编译游戏。它会核对文件清单、SHA-256 和 ZIP 完整性，上传 ZIP 与 `.sha256` 校验文件；不会覆盖已有 Release。
-- 手动发布请选择 `main` 分支和未使用过的版本号。上传失败会保留草稿，处理草稿后再重试。
-- 本地打包命令为 `python tools/package_release.py`，输出在 `release/`。发布前请完整解压，按 `START-HERE.txt` 验收；自动打包检查不替代游戏启动或联机测试。
 
 ## English
 
@@ -127,13 +120,7 @@ When [reporting an issue](https://github.com/Scenvir/Por2D_web_share/issues), in
 
 This repository provides game runtime files, launch scripts, and player documentation. See the [player guide](PLAYER-GUIDE.md) (Chinese) and [START-HERE.txt](START-HERE.txt) (Chinese) for more details.
 
-### Interface documentation and automated releases
+### Interface documentation
 
 `developer/` includes the [interface and replay specification](developer/SCRIPT_INTERFACE.md), [interface guide](developer/开发与接口指南.md), and a runnable example: run `node developer/agent_example.cjs` from the repository or extracted bundle root. The interface documentation is in Chinese.
 
-After updating runtime files or documentation, maintainers should stage new files, run `python tools/package_release.py --refresh-manifest`, and commit the updated `SHA256.json` together with the changes.
-
-- Push a new `v*` version tag, or enter a new version (for example `v2026.10.23`) under **Actions → Package and release → Run workflow** to package and publish a release.
-- The workflow packages this repository's runtime, player guides, and `developer/` files without recompiling the game. It verifies the file manifest, SHA-256 hashes, and ZIP integrity, then uploads the ZIP and a `.sha256` checksum file. Existing releases are never overwritten.
-- For manual releases, select the `main` branch and an unused version tag. An upload failure leaves a draft; resolve that draft before retrying.
-- To package locally, run `python tools/package_release.py`; outputs go to `release/`. Before publishing, extract the complete bundle and check startup using `START-HERE.txt`. Packaging checks do not replace gameplay or co-op tests.
