@@ -123,4 +123,3 @@ This repository provides game runtime files, launch scripts, and player document
 ### Interface documentation
 
 `developer/` includes the [interface and replay specification](developer/SCRIPT_INTERFACE.md), [interface guide](developer/开发与接口指南.md), and a runnable example: run `node developer/agent_example.cjs` from the repository or extracted bundle root. The interface documentation is in Chinese.
-
