@@ -1,7 +1,8 @@
 Por2D Web — 首次游玩
 
 1. 完整解压 ZIP，不要在压缩包内运行。
-2. 主机安装 Node.js 22 或更新版本：https://nodejs.org/en/download
+2. 主机安装 Node.js 当前受支持 LTS 的最新补丁版：https://nodejs.org/en/download
+   最低兼容主版本为 22；请保持安全更新，不要仅根据主版本号判断是否足够新。
    队友只需要浏览器。无需 npm install。
 3. Windows 双击 start-local.cmd；联机时改用 start-lan.cmd。
    macOS / Linux 在解压目录打开终端：

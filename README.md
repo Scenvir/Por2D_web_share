@@ -17,7 +17,7 @@
 ### 开始游玩
 
 1. 完整解压 ZIP，并打开解压目录中的 `START-HERE.txt`。
-2. 房主安装 [Node.js 22 或更新版本](https://nodejs.org/en/download)。队友只需要浏览器，无需 `npm install`、Python 或构建工具。
+2. 房主安装 [Node.js 当前受支持 LTS 的最新补丁版](https://nodejs.org/en/download)（最低兼容主版本为 22，请保持安全更新）。队友只需要浏览器，无需 `npm install`、Python 或构建工具。
 3. Windows 双击 `start-local.cmd`；macOS / Linux 在解压目录运行：
 
    ```sh
@@ -77,7 +77,7 @@ The recommended download is `Por2D-Web-Coop-Share.zip` from the release assets. 
 ### Getting started
 
 1. Extract the entire ZIP and open `START-HERE.txt` in the extracted folder.
-2. The host needs [Node.js 22 or newer](https://nodejs.org/en/download). Other players only need a browser. No `npm install`, Python, or build tools are required.
+2. The host needs the [latest patch release of a currently supported Node.js LTS line](https://nodejs.org/en/download) (minimum compatible major version: 22; keep security updates current). Other players only need a browser. No `npm install`, Python, or build tools are required.
 3. On Windows, double-click `start-local.cmd`. On macOS / Linux, open a terminal in the extracted folder and run:
 
    ```sh
