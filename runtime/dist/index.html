@@ -67,9 +67,9 @@
 <section id="levels-panel" class="panel" hidden><button class="back" data-panel="home">← 返回菜单</button><h2>选择章节与关卡</h2><label class="setting">战役章节 <select id="chapter"><option value="1">第一章 · 单人战役</option><option value="2">第二章 · 双角色合作</option><option value="3">第三章 · 重力机关</option></select></label><label class="setting">小节 <select id="chapter-section"><option value="campaign">战役</option><option value="1">小节 1</option></select></label><p id="chapter-description" class="muted"></p><div id="level-list" class="level-list"></div><div id="section-list" class="level-list" hidden></div><p id="section-empty" class="muted" hidden>本小节暂无地图。</p></section>
     <section id="coop-panel" class="panel" hidden>
       <button class="back" data-panel="home">← 返回菜单</button><h2>多人联机房间</h2>
-      <p class="muted">房间最多 8 人，操作席上限等于关卡角色数。观战玩家可选择空闲角色进入操作席；操作玩家可随时进入观战席，释放角色。观战玩家不会自动接手角色。</p>
-      <p class="muted">双人地图中角色会互相阻挡，也可以站在队友身上，两人均通过才进入下一关。打开菜单或失焦只清除你的操作，游戏不暂停；任一玩家可在设置中修改双方速率。各自显示自己的瞄准预览，双方都能看到射线。</p>
-      <p class="muted">无需等待队友即可开始。有空闲角色时，操作玩家可按 Ctrl 切换；观战玩家可选择空闲角色进入操作席。创建时可填写 1–16 位字母、数字、横线或下划线编号，留空随机生成。</p>
+      <p class="muted">房间最多 8 人，每个角色一个操作席，其余玩家观战。观战玩家可选择空闲角色接手，操作玩家可随时转为观战；已在观战席的玩家不会自动接手角色。</p>
+      <p class="muted">双人地图中角色互相阻挡，可以站在队友身上；两人都通过才进入下一关。打开菜单或失焦只清除你的输入，游戏不暂停。任一玩家可在设置中修改双方速度。瞄准预览只显示自己的，射线双方可见。</p>
+      <p class="muted">无需等待队友即可开始；有空闲角色时，操作玩家可按 Ctrl 切换。房间码可自定义为 1–16 位字母、数字、横线或下划线，留空则随机生成。</p>
       <div class="row"><button id="coop-create" class="primary">创建房间</button><input id="coop-code" aria-label="房间码" placeholder="自定义 / 加入房间编号" maxlength="16" autocomplete="off"><button id="coop-join">加入房间</button></div>
       <p id="coop-room" class="muted" role="status"></p><select id="coop-role" aria-label="选择操作角色" hidden></select><button id="coop-seat" hidden>进入观战席</button><button id="chat-menu-open" hidden>房间聊天</button><button id="coop-menu-leave" hidden>离开房间</button>
       <div id="room-management" hidden><h3>房间玩家</h3><p id="room-access" class="muted"></p><button id="room-lock" hidden>锁定房间</button><p class="muted small">房主可踢出玩家；踢出后自动锁房，阻止重新加入。房主离开后由列表中的下一位玩家接任。</p><div id="room-members"></div></div>
@@ -89,22 +89,22 @@
       <label class="setting">显示已解锁皇冠 <input id="crown" type="checkbox" checked></label>
       <label class="setting">显示触控按钮 <select id="touch-mode"><option value="auto">自动</option><option value="on">始终显示</option><option value="off">隐藏</option></select></label>
       <h3>键盘操作</h3><p class="muted">点击键位后按新键，Esc 取消。鼠标左右键始终可放门。</p><div id="bindings" class="bindings"></div><button id="reset-bindings">恢复默认键位</button>
-      <p class="muted small">设置和已到达关卡保存在当前浏览器。清除网站数据会移除这些记录；当前关卡中的位置不自动保存。</p>
+      <p class="muted small">设置和关卡进度保存在当前浏览器，清除网站数据会一并删除；关卡内的位置不会自动保存。</p>
     </section>
-<section id="files-panel" class="panel" hidden><button class="back" data-panel="home">← 返回菜单</button><h2>创造，也可以重放</h2><h3>自定义地图</h3><p class="muted">导入基础版编辑器的 JSON 地图。地图记录保存在当前浏览器，也请保留原文件。</p><div class="row"><button id="import-map">导入地图 JSON</button><button id="example-map">试玩示例地图</button><a class="button" href="editor/" target="_blank" rel="noopener">打开地图编辑器 ↗</a></div><p class="muted">点击地图开始游玩；已在联机房间时，房主选图后所有玩家一起游玩。</p><button id="manage-maps" aria-pressed="false">管理地图</button><div id="custom-list" class="level-list map-list"></div>
-      <h3>服务器地图</h3><p class="muted">Node 服务会列出 dist/levels 中的有效 JSON 地图。编辑器“加入可玩列表”保存到本浏览器上方列表；地图按声明的单人或双人人数游玩，也可创建最多 8 人的联机房间。</p><div id="server-map-list" class="level-list map-list"></div>
-      <h3>录制与回放</h3><p class="muted">本地录制会从当前关卡起点重新开始；联机录制保留本次同步以来的操作，不重置游戏。停止后导出脚本；所有章节的回放均在播放器中打开，可暂停、逐帧、调速和回看。</p><div class="row"><button id="record-button">开始录制</button><a id="import-replay" class="button" href="replay/" target="_blank" rel="noopener">打开回放播放器 ↗</a><button id="export-recording" disabled>再次导出上次录制</button></div><p id="record-status" class="muted"></p>
+<section id="files-panel" class="panel" hidden><button class="back" data-panel="home">← 返回菜单</button><h2>创造，也可以重放</h2><h3>自定义地图</h3><p class="muted">导入基础版编辑器的 JSON 地图。地图保存在当前浏览器，请同时保留原文件。</p><div class="row"><button id="import-map">导入地图 JSON</button><button id="example-map">试玩示例地图</button><a class="button" href="editor/" target="_blank" rel="noopener">打开地图编辑器 ↗</a></div><p class="muted">点击地图开始游玩；在联机房间中由房主选图，全员一起游玩。</p><button id="manage-maps" aria-pressed="false">管理地图</button><div id="custom-list" class="level-list map-list"></div>
+      <h3>服务器地图</h3><p class="muted">列出服务器提供的有效 JSON 地图；编辑器的“加入可玩列表”则保存到上方的本地列表。地图按声明的单人或双人人数游玩，也可用于联机房间。</p><div id="server-map-list" class="level-list map-list"></div>
+      <h3>录制与回放</h3><p class="muted">单机录制会从当前关卡起点重新开始；联机录制从本次同步起记录，不重置游戏。停止后导出脚本，可在回放播放器中暂停、逐帧、调速和回看。</p><div class="row"><button id="record-button">开始录制</button><a id="import-replay" class="button" href="replay/" target="_blank" rel="noopener">打开回放播放器 ↗</a><button id="export-recording" disabled>再次导出上次录制</button></div><p id="record-status" class="muted"></p>
     </section>
 <section id="help-panel" class="panel" hidden><button class="back" data-panel="home">← 返回菜单</button><h2>先走到出口，再试试传送门。</h2>
 <ol class="help-list">
-<li><strong>先抵达出口</strong><p>默认用 A / D 左右移动，W 跳跃。找到灰色出口，让角色的位置和头部朝向与它匹配，再按 E 尝试通关。靠近目标时松开方向键，用短按微调。操作键可以在设置中修改。</p><p>第三章中，接触重力机关并按交互键（默认 E）可改变重力方向；可以进入出口时优先进门。W / A / S / D 对应屏幕上 / 左 / 下 / 右：逆重力方向跳跃，垂直重力方向移动，顺重力方向无效果。</p></li>
-<li><strong>放置一对传送门</strong><p>把鼠标指向白色墙面，观察放门预览，再单击左键放蓝门、右键放橙门。每扇门需要连续三格墙面，射线要命中中间一格。出现红叉时，检查遮挡，或换个位置瞄准。深色墙面不能放门。</p></li>
-<li><strong>用 Q 和 T 辅助瞄准</strong><p>默认按 Q 开关当前瞄准位置的放门预览：看射线、三格轮廓，以及蓝／橙箭头或红叉，判断此刻能放哪种门。按 T 开关全局门方向提示，观察朝向射击起点的墙面上可能的门朝向；它不代表当前射线一定能到达，也不保证此刻能放门。先用 T 比较方向，再用 Q 检查具体位置；两者独立开关，只显示提示，不会放门。改键后以设置为准。</p></li>
-<li><strong>照着做：比较不同朝向</strong><p>在“放门并穿过”的亲自练习中，保持头朝上，开启 Q 瞄准左侧白墙中间格，观察向上的箭头；再按 T 开启全局方向，关掉 Q，比较两种显示。“转向与对齐”中向左穿过已配好的门，再向右走到实心地面；头朝右时瞄准左侧白墙高于头部的空白墙段，箭头仍可向上。第 8 段“四向门预览”在四面白墙中自动轮换四种头部朝向，默认开启 T 提示；第 9 段专门展示亮暗端对应。</p></li>
-<li><strong>穿过后，先看身体</strong><p>穿门会改变身体的位置、朝向和速度方向；门的亮暗端表示对应关系。身体横过来时，要让整段身体对齐门口。可以在设置中降低运行速度，练习短按调整。到达出口却无法通过时，调整位置和朝向，再次按 E；按 R 可以重试。</p></li>
-<li><strong>先认身体，再亲自练习</strong><p>第一段展示身体尺寸、四种头朝向及跨门后的身体划分。第 2–6 段可点击“亲自试试”；远跳练习比较起步高度，探头练习观察实际头部点和主体侧锁门。最后两段比较四向门预览与亮暗端对应。练习不改变正式关卡进度。</p></li>
-<li><strong>触控操作</strong><p>用屏幕按钮移动、跳跃和进入出口。先选择蓝门或橙门，在画面上拖动瞄准，松手发射。</p></li>
-</ol><div class="row"><button id="tutorial-intro" class="primary">入门与进阶练习 · 九段演示 →</button></div><p class="muted">练习时可暂停、重练和换段。两扇门都存在才能传送，放门失败会保留原门并显示约 3 秒原因。身体或穿门另一端碰到地图边界会恢复检查点，未保存时重开。Esc 打开菜单；Q 切换放门预览；T 切换全局门方向；Z / X 向鼠标位置放门。单机游玩需要离开时，请先打开菜单暂停；联机打开菜单不会暂停游戏。</p><a href="tutorial.html" target="_blank" rel="noopener">三分钟上手 ↗</a>
+<li><strong>先抵达出口</strong><p>默认 A / D 移动，W 跳跃。让角色与灰色出口重合、头部朝向一致，按 E 通关。接近出口时先松开方向键，再短按微调。键位可在设置中修改。</p><p>第三章中，接触重力机关并按交互键（默认 E）可改变重力方向；满足出口条件时优先进入出口。W / A / S / D 对应屏幕上 / 左 / 下 / 右：逆重力方向为跳跃，垂直重力方向为移动，顺重力方向无效。</p></li>
+<li><strong>放置一对传送门</strong><p>鼠标指向白色墙面，看预览后左键放蓝门、右键放橙门。门占连续三格墙面，射线须命中中间一格；深色墙面不能放门。出现红叉时，检查遮挡或换个位置。</p></li>
+<li><strong>用 Q 和 T 辅助瞄准</strong><p>默认 Q 开关放门预览：显示射线、三格轮廓，以及蓝／橙箭头（可放）或红叉（不可放）。T 开关全局门方向：标出朝向射击起点的墙面可能的门朝向，但不保证射线能到达或能放门。可先用 T 比较方向，再用 Q 确认位置；两者都只是提示，不会放门。</p></li>
+<li><strong>照着做：比较不同朝向</strong><p>在“放门并穿过”练习中，头朝上时开启 Q 瞄准左侧白墙中间格，观察向上的箭头；再开 T、关 Q，比较两种显示。“转向与对齐”中向左穿过配好的门，再向右走到实心地面；此时头朝右，瞄准左侧白墙高于头部的空白段，箭头仍可向上。</p></li>
+<li><strong>穿过后，先看身体</strong><p>穿门会改变身体的位置、朝向和速度方向，门的亮暗端表示对应关系。身体横过来时，要让整段身体对齐门口。可在设置中降低速度练习短按。在出口处无法通过时，调整位置和朝向后再按 E；按 R 重试。</p></li>
+<li><strong>先认身体，再亲自练习</strong><p>第 1 段展示身体尺寸、四种头朝向及跨门时的身体划分。第 2–6 段可点“亲自试试”：远跳练习比较起步高度，探头练习观察实际头部点和主体侧锁门。第 8 段在四面白墙中轮换四种头朝向（默认开启 T），第 9 段展示亮暗端对应。练习不影响关卡进度。</p></li>
+<li><strong>触控操作</strong><p>用屏幕按钮移动、跳跃和进入出口。先选蓝门或橙门，在画面上拖动瞄准，松手发射。</p></li>
+</ol><div class="row"><button id="tutorial-intro" class="primary">入门与进阶练习 · 九段演示 →</button></div><p class="muted">练习时可暂停、重练和换段。两扇门都在才能传送；放门失败时保留原门，并显示约 3 秒原因。身体或穿门后的另一端碰到地图边界会恢复检查点，未保存则重开。Esc 菜单，Q 放门预览，T 全局门方向，Z / X 向鼠标位置放门。单机打开菜单即暂停，联机不会暂停。</p><a href="tutorial.html" target="_blank" rel="noopener">三分钟上手 ↗</a>
     </section>
     <p id="menu-notice" role="status" aria-live="polite"></p>
   </dialog>

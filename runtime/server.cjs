@@ -49,6 +49,8 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
   const rooms = new Map();
   const representation = require('./http-compression.cjs')();
   const server = http.createServer(async (req,res) => {
+    // Errors and live API responses must never become cached static resources.
+    res.setHeader('Cache-Control','no-store');
     try {
       if (!['GET','HEAD'].includes(req.method)) { res.writeHead(405); return res.end(); }
       if(new URL(req.url,'http://localhost').pathname === '/api/maps') {
@@ -72,12 +74,25 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
       if (!real.startsWith(fs.realpathSync(root)+path.sep)) { res.writeHead(403); return res.end(); }
       const type = {'.svg':'image/svg+xml', '.html':'text/html;charset=utf-8','.js':'text/javascript;charset=utf-8','.css':'text/css;charset=utf-8','.wasm':'application/wasm','.json':'application/json','.flac':'audio/flac','.opus':'audio/ogg'};
       res.setHeader('Content-Type',type[path.extname(file)] || 'text/plain;charset=utf-8');
-      res.setHeader('Cache-Control','no-store');
       res.setHeader('X-Content-Type-Options','nosniff');
       const data = fs.readFileSync(file);
       const response = await representation(data, path.extname(file), req.headers['accept-encoding']);
       if (response.vary) res.setHeader('Vary','Accept-Encoding');
       if (response.encoding) res.setHeader('Content-Encoding',response.encoding);
+      if (!response.status) {
+        // URLs are mutable: revalidate every use, never mark them immutable.
+        // Hash the selected bytes, not mtime/size or only the uncompressed file,
+        // so even same-size replacements and encoding changes cannot reuse stale data.
+        const etag = '"'+crypto.createHash('sha256').update(response.data).digest('base64url')+'"';
+        res.setHeader('Cache-Control','no-cache, must-revalidate');
+        res.setHeader('ETag',etag);
+        const condition = req.headers['if-none-match'];
+        if (typeof condition === 'string' && (condition.trim() === '*' ||
+            condition.split(',').some(value => value.trim().replace(/^W\//,'') === etag))) {
+          res.statusCode = 304;
+          return res.end();
+        }
+      }
       res.setHeader('Content-Length',response.data.length);
       res.statusCode = response.status || 200;
       res.end(req.method === 'HEAD' ? undefined : response.data);
@@ -103,10 +118,16 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
   };
   const broadcast = (room,msg) => room.members.forEach(ws => send(ws,msg));
   const validPoint = p => p && Number.isFinite(p.x) && Number.isFinite(p.y) && p.x >= 0 && p.x < 1000 && p.y >= 0 && p.y < 600;
+  // Display-only pixels; never quantize portal shots or authoritative inputs.
+  const cursorPoint = p => validPoint(p) ? {x:Math.min(999,Math.round(p.x)),y:Math.min(599,Math.round(p.y))} : null;
   const crowns = room => room.owners.map(id => { const ws=room.members[id]; return !!(ws?.crownUnlocked && ws.crownVisible); });
   const count = room => room.map ? JSON.parse(room.map).playerCount : catalogs.get(room.core).maps.find(m=>m.chapter===room.chapter&&m.section===room.section&&m.id===room.level).players;
   const startMessage = (room, snapshot = null, sequence = 0) => ({type:'start',level:room.level,chapter:room.chapter,section:room.section,map:room.map,epoch:room.epoch,sequence,snapshot,crowns:crowns(room),owners:room.owners,playerCount:count(room)});
-  const status = room => room.members.forEach(ws => send(ws,{type:'status',player:ws.player,speed:room.speed,members:room.members.length,locked:room.locked,roster:room.members.map(peer=>({id:peer.memberId,player:peer.player,ready:peer.ready,host:peer.player===0})),owners:room.owners,crowns:crowns(room),waiting:false,paused:room.members.map(peer => !peer.ready && (!peer.catchingUp || peer === ws))}));
+  const status = room => {
+    // Clients clear displayed cursors on status/start, including unchanged rosters.
+    room.lastCursors = null;
+    room.members.forEach(ws => send(ws,{type:'status',player:ws.player,speed:room.speed,members:room.members.length,locked:room.locked,roster:room.members.map(peer=>({id:peer.memberId,player:peer.player,ready:peer.ready,host:peer.player===0})),owners:room.owners,crowns:crowns(room),waiting:false,paused:room.members.map(peer => !peer.ready && (!peer.catchingUp || peer === ws))}));
+  };
   const resetInput = ws => { ws.flags = 0; ws.clearJump = true; ws.shots = []; ws.cursor = null; ws.spectate = false; };
   const catchUp = (room,ws) => {
     if (!ws.catchingUp || !ws.snapshotReady || ws.ack !== ws.sentThrough) return;
@@ -306,7 +327,7 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
         if (msg.type === 'input') {
           if (!ws.ready) return;
           if (!Number.isInteger(msg.flags) || msg.flags < 0 || msg.flags > 415 || (msg.flags & ~415)) return;
-          ws.cursor = validPoint(msg.cursor) ? {x:msg.cursor.x,y:msg.cursor.y} : null;
+          ws.cursor = cursorPoint(msg.cursor);
           if(!room.owners.includes(ws.player))return;
           if (msg.flags & 256) ws.clearJump = true;
           ws.flags = msg.flags & 151; // Restart is an edge, never a held input.
@@ -359,8 +380,8 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
       room.clock -= frameMilliseconds;
       const players = room.owners.map(id => {
         const ws=room.members[id];
-        if(!ws?.ready)return {flags:256 | (room.restart ? 8 : 0) | (room.checkpoint ? 64 : 0),shots:[],cursor:null};
-        const input = {flags:ws.flags | (ws.clearJump ? 256 : 0) | (room.restart ? 8 : 0) | (room.checkpoint ? 64 : 0) | (ws.spectate ? 32 : 0),shots:ws.shots,cursor:ws.cursor};
+        if(!ws?.ready)return {flags:256 | (room.restart ? 8 : 0) | (room.checkpoint ? 64 : 0),shots:[]};
+        const input = {flags:ws.flags | (ws.clearJump ? 256 : 0) | (room.restart ? 8 : 0) | (room.checkpoint ? 64 : 0) | (ws.spectate ? 32 : 0),shots:ws.shots};
         ws.shots = []; ws.spectate = false; ws.clearJump = false; return input;
       });
       room.restart = false; room.checkpoint = false;
@@ -387,12 +408,23 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
       }
       // Catching-up members receive only their ordered history window, never live frames.
       for (const peer of room.members) if (!peer.catchingUp) send(peer,frame);
-      broadcast(room,{type:'cursors',cursors:room.members.map(ws=>({player:ws.player,cursor:ws.cursor}))});
       }
     }
     scheduleRooms();
   }
   scheduleRooms();
+  // Cursors are presentation state, not replay inputs. A separate 20 Hz clock
+  // stays responsive at 0.1x and never bursts during physics catch-up. Keep full
+  // snapshots for protocol-11 clients, but send nothing while pixels are still.
+  const cursorTimer = setInterval(() => {
+    for (const room of rooms.values()) {
+      const cursors = room.members.map(ws=>({player:ws.player,cursor:ws.cursor}));
+      const serialized = JSON.stringify(cursors);
+      if (serialized === room.lastCursors) continue;
+      room.lastCursors = serialized;
+      broadcast(room,{type:'cursors',cursors});
+    }
+  },50);
   const heartbeat = setInterval(() => {
     for (const ws of wss.clients) {
       if (!ws.alive) { ws.logCloseReason = 'heartbeat_timeout'; ws.terminate(); continue; }
@@ -407,14 +439,14 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
   async function close() {
     closing = true; clearTimeout(timer);
     await closeEditor();
-    clearInterval(heartbeat); clearInterval(idleTimer);
+    clearInterval(heartbeat); clearInterval(idleTimer); clearInterval(cursorTimer);
     for (const ws of wss.clients) { ws.logCloseReason = 'server_shutdown'; ws.terminate(); }
     await new Promise(resolve => wss.close(resolve));
     await new Promise(resolve => server.close(resolve));
   }
   return {server,close};
 }
-function connectionHints(host, port, interfaces = os.networkInterfaces()) {
+function connectionHints(host, port, interfaces) {
   const url = address => `http://${address.includes(':') ? `[${address}]` : address}:${port}`;
   const lines = [`Por2D 服务已启动，监听 ${host}:${port}`];
   if (host !== '0.0.0.0' && host !== '::') {
@@ -424,6 +456,11 @@ function connectionHints(host, port, interfaces = os.networkInterfaces()) {
     return lines;
   }
   lines.push(`本机访问：${url('127.0.0.1')}`, '队友访问以下本机网卡地址（请选择双方实际连接的网络）：');
+  // Address hints are optional; restricted hosts may deny interface discovery.
+  // A loopback listener never needs it, and a LAN listener must still start.
+  if (!interfaces) {
+    try { interfaces = os.networkInterfaces(); } catch (_) { interfaces = {}; }
+  }
   let count = 0;
   for (const [name, addresses] of Object.entries(interfaces)) {
     for (const entry of addresses || []) {
