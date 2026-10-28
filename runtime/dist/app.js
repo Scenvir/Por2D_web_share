@@ -169,8 +169,28 @@
   }
   const net = new CoopConnection(networkEvent);
   $('coop-status').onclick = () => openMenu('coop');
+  $('room-button').onclick = () => openMenu('coop');
   $('room-lock').onclick = () => net.send({type:'lock',locked:!net.locked});
-  $('coop-seat').onclick = () => { clearInput(); net.send({type:'seat',seat:net.role<0?'operate':'watch',role:Number($('coop-role').value)}); };
+  let seatRequest = null, seatRequestNumber = 0, seatTimer, observedRole = -1, roleOptionsKey = '';
+  function finishSeatRequest(text, success = false) {
+    clearTimeout(seatTimer); seatRequest = null;
+    $('seat-status').textContent = t(text);
+    if (success) message(t(text));
+    dirty = true;
+  }
+  function requestSeat(seat, role) {
+    if (seatRequest || !net.code) return;
+    clearInput();
+    seatRequest = {seat,role,requestId:++seatRequestNumber};
+    $('seat-status').textContent = t('正在切换席位…');
+    net.send({type:'seat',...seatRequest});
+    seatTimer = setTimeout(() => {
+      finishSeatRequest('席位切换未确认，请检查连接后重试。'); sync();
+    },5000);
+    sync();
+  }
+  $('coop-seat').onclick = () => requestSeat(net.role<0?'operate':'watch',Number($('coop-role').value));
+  $('room-resume').onclick = closeMenu;
   function renderMembers() {
     $('room-management').hidden = !net.code;
     $('room-lock').hidden = net.player !== 0;
@@ -221,6 +241,8 @@
       resetChat();
       $('coop-room').textContent = t`房间码：${event.code} · 你是 P${event.player+1}。等待另一名玩家…`;
     } else if (event.type === 'start') {
+      observedRole = net.role;
+      finishSeatRequest('正在同步关卡…');
       remoteCursors=[];emotes=[];
       chatBubbles=[];
       stopRecording();
@@ -234,16 +256,27 @@
       net.send({type:'ready'}); closeMenu();
       message(t('房间已连接，可在联机菜单中选择操作席或观战席。'));
     } else if (event.type === 'owners') {
-      clearInput(); core._web_coop_select(Math.max(0,net.role));
+      if (observedRole !== net.role) clearInput();
+      observedRole = net.role; core._web_coop_select(Math.max(0,net.role));
       core._web_coop_crowns(...event.crowns);
     } else if (event.type === 'crowns') {
       core._web_coop_crowns(...event.crowns); dirty = true;
     } else if (event.type === 'status') {
-      clearInput();
+      if (observedRole !== net.role) clearInput();
+      observedRole = net.role;
       remoteCursors = []; remoteCursor = null; chatBubbles = [];
       core._web_coop_select(Math.max(0,net.role));
       core._web_coop_crowns(...event.crowns);
       $('coop-room').textContent = t`房间码：${net.code} · 你是 P${net.player+1}${event.waiting ? t(' · 等待队友') : ''}`;
+      if (!seatRequest) $('seat-status').textContent = net.paused ? t('正在同步关卡…') : net.role < 0 ? t('已进入观战席。') : t('已进入操作席。');
+    } else if (event.type === 'seat_result') {
+      if (seatRequest && event.requestId === seatRequest.requestId) {
+        const operate = seatRequest.seat === 'operate';
+        finishSeatRequest(event.ok === false ? (event.message || '席位切换失败，请重试。') : (operate ? '已进入操作席。' : '已进入观战席。'),event.ok !== false);
+        if (event.ok !== false) closeMenu();
+      }
+    } else if (event.type === 'sync_progress') {
+      $('seat-status').textContent = t`正在同步关卡 · 还差 ${event.remaining} 帧`;
     } else if (event.type === 'frame') {
       if(event.players.length === 2) tickCoop(event.players[0].flags,event.players[1].flags,event.players.flatMap((p,player)=>p.shots.map(s=>({...s,player}))));
       else {
@@ -259,6 +292,7 @@
     } else if (event.type === 'emote') {
       showEmote(event);
     } else if (event.type === 'ended') {
+      finishSeatRequest(event.reason); observedRole = -1;
       remoteCursors=[];emotes=[];
       stopRecording(); coopRecorder = null;
       resetChat();
@@ -281,7 +315,17 @@
     if (event.type !== 'frame' && event.type !== 'cursors') sync();
   }
   let clearJumpPending = false;
-  function inputFlags() { const clear = clearJumpPending ? 256 : 0; clearJumpPending = false; return clear + Number(active('left')) + 2*Number(active('right')) + 4*Number(active('jump')) + 16*Number(active('exit')) + 128*Number(active('down')); }
+  let pendingPresses = 0;
+  const inputBits = {left:1,right:2,jump:4,exit:16,down:128};
+  function latchPress(control) {
+    const action = inputBits[control] ? control : Object.keys(prefs.bindings).find(a => prefs.bindings[a] === control);
+    pendingPresses |= inputBits[action] || 0;
+  }
+  function inputFlags() {
+    const clear = clearJumpPending ? 256 : 0; clearJumpPending = false;
+    const flags = pendingPresses | Number(active('left')) | 2*Number(active('right')) | 4*Number(active('jump')) | 16*Number(active('exit')) | 128*Number(active('down'));
+    pendingPresses = 0; return clear | flags;
+  }
   function shoot(portal,x,y) {
     if(!canAim())return;
     if(state.tutorial >= 0 && ((!state.tutorialPractice && state.tutorial!==11) || tutorialPaused))return;
@@ -337,7 +381,8 @@
   }
   setInterval(() => {
     if (net.active && running()) {
-      net.send({type:'input',flags:inputFlags(),shots:networkShots,cursor:aim}); networkShots = [];
+      const edges = pendingPresses;
+      net.send({type:'input',flags:inputFlags(),pressed:edges,shots:networkShots,cursor:aim}); networkShots = [];
     }
   },20);
   const pixels = ctx.createImageData(1000,600);
@@ -517,6 +562,7 @@
     } finally { core._free(pointer); }
   }
   function clearInput() {
+    pendingPresses = 0;
     clearJumpPending = true;
     shotAudio.stop();
     emoteWheel=null;
@@ -664,23 +710,31 @@
     button.addEventListener('contextmenu',event => event.preventDefault());
     button.addEventListener('selectstart',event => event.preventDefault());
   });
-  let landscapeEnabled = false;
+  let landscapeEnabled = false, orientationKey = '';
   function mobileControls() { return coarse.matches || prefs.touch === 'on'; }
   function updateOrientation() {
     const immersive = mobileControls() && landscapeEnabled;
     const rotated = immersive && innerHeight > innerWidth;
+    const nextKey = `${immersive}/${rotated}`;
     document.body.classList.toggle('landscape-game',immersive);
     document.body.classList.toggle('force-landscape',rotated);
-    if (immersive) {
-      $('stage').append($('touch-controls'),$('fullscreen-button'),$('restart-button'),$('checkpoint-button'));
-    } else {
-      document.querySelector('.game-shell').after($('touch-controls'));
-      $('menu-button').before($('fullscreen-button'));
-      document.querySelector('.game-bottom').append($('checkpoint-button'),$('restart-button'));
+    if (nextKey !== orientationKey) {
+      orientationKey = nextKey;
+      if (immersive) {
+        $('stage').append($('touch-controls'),$('fullscreen-button'),$('orientation-button'),$('restart-button'),$('checkpoint-button'));
+      } else {
+        document.querySelector('.game-shell').after($('touch-controls'));
+        $('menu-button').before($('fullscreen-button'),$('orientation-button'));
+        document.querySelector('.game-bottom').append($('checkpoint-button'),$('restart-button'));
+      }
+      clearInput();
     }
-    labelControl('fullscreen-button',mobileControls() ? (landscapeEnabled ? t('退出横屏') : t('强制横屏')) : (document.fullscreenElement ? t('退出全屏') : t('全屏')));
-    $('fullscreen-button').setAttribute('aria-pressed',String(mobileControls() ? landscapeEnabled : !!document.fullscreenElement));
-    clearInput();
+    labelControl('fullscreen-button',document.fullscreenElement ? t('退出全屏') : t('全屏'));
+    $('fullscreen-button').setAttribute('aria-pressed',String(!!document.fullscreenElement));
+    labelControl('orientation-button',landscapeEnabled ? t('退出横屏布局') : t('横屏布局'));
+    $('orientation-button').textContent = landscapeEnabled ? t('退出横屏布局') : t('横屏布局');
+    $('orientation-button').setAttribute('aria-pressed',String(landscapeEnabled));
+    $('orientation-button').hidden = !mobileControls();
   }
   function applyTouch() {
     document.body.classList.toggle('touch',prefs.touch === 'on' || (prefs.touch === 'auto' && coarse.matches));
@@ -693,8 +747,10 @@
     selectedPortal = id; dirty = true;
     document.querySelectorAll('[data-portal]').forEach(b => { const on = +b.dataset.portal === id; b.classList.toggle('active',on); b.setAttribute('aria-pressed',String(on)); });
   }
+  let lastUiSync = -Infinity;
   function sync() {
     if (!ready) return;
+    lastUiSync = performance.now();
     state = readState();
     $('checkpoint-button').disabled = !started || state.tutorial >= 0 || !!state.replay || (net.connected && (net.role < 0 || net.paused));
     labelControl('checkpoint-button',t`${state.hasCheckpoint ? t('更新检查点') : t('保存检查点')}（${keyLabel(prefs.bindings.checkpoint)}）：所有角色在传送门外静止 25 帧（正常速度 0.625 秒）`);
@@ -713,17 +769,26 @@
     $('speed').value = net.connected ? net.speed : prefs.speed;
     $('coop-menu-leave').hidden = !net.connected;
     $('coop-seat').hidden = !net.connected;
-    $('coop-seat').textContent = net.role<0 ? t('进入操作席') : t('进入观战席');
-    $('coop-seat').disabled = !net.code || (net.role<0 && (!net.active || net.paused || !net.owners.includes(-1)));
+    $('coop-seat').textContent = seatRequest ? t('正在切换…') : net.role<0 ? t('进入操作席') : t('进入观战席');
+    $('coop-seat').disabled = !!seatRequest || !net.code || (net.role<0 && (!net.active || net.paused || !net.owners.includes(-1)));
     $('coop-role').hidden = !net.connected || net.role>=0;
-    const selectedRole = Number($('coop-role').value);
-    $('coop-role').replaceChildren(...net.owners.flatMap((owner,role)=>{
-      if(owner>=0)return [];
-      const option=document.createElement('option'); option.value=String(role); option.textContent=t`角色 ${role+1}`;
-      return [option];
-    }));
-    if(net.owners[selectedRole]===-1)$('coop-role').value=String(selectedRole);
+    const nextRoleKey = `${prefs.language}/${net.owners.join(',')}`;
+    if (nextRoleKey !== roleOptionsKey) {
+      roleOptionsKey = nextRoleKey;
+      const selectedRole = Number($('coop-role').value);
+      $('coop-role').replaceChildren(...net.owners.flatMap((owner,role)=>{
+        if(owner>=0)return [];
+        const option=document.createElement('option'); option.value=String(role); option.textContent=t`角色 ${role+1}`;
+        return [option];
+      }));
+      if(net.owners[selectedRole]===-1)$('coop-role').value=String(selectedRole);
+    }
     $('coop-role').disabled = $('coop-seat').disabled;
+    $('room-button').textContent = net.connected ? t('房间 / 席位') : t('联机房间');
+    $('room-button').hidden = !started;
+    $('room-menu-entry').textContent = net.connected ? t('当前房间 · 席位与成员') : t('多人联机 · 创建/加入房间');
+    $('room-resume').disabled = !started || (net.connected && !net.active);
+    $('room-resume').hidden = !started;
     $('chat-menu-open').hidden = !net.code;
     $('resume-button').disabled = $('close-menu').disabled = !started || (net.connected && !net.active);
     document.querySelectorAll('#level-list button').forEach(b => b.disabled = net.connected && net.player !== 0);
@@ -830,7 +895,8 @@
       }
     } else accumulator = 0;
     if (ready && dirty) {
-      sync();
+      // Physics/rendering stays responsive; menu DOM does not need rebuilding at frame rate.
+      if (!running() || now-lastUiSync >= 100) sync(); else state = readState();
       updateShotFeedback();
       core._web_wall_directions(wallDirectionsEnabled());
       const pointer = core._web_render(prefs.debug,prefs.grid,canAim() && previewEnabled() && aim && running() ? (aimGesture?.portal ?? selectedPortal) : -1,aim?.x || 0,aim?.y || 0);
@@ -929,6 +995,7 @@
       if (!running() || (state.tutorial >= 0 ? !state.tutorialPractice || tutorialPaused : state.replay)) return;
       const alreadyHeld = button.dataset.key && keyHeld(control);
       e.preventDefault(); touches.set(e.pointerId,control); button.classList.add('held'); button.setPointerCapture(e.pointerId);
+      if (!alreadyHeld) latchPress(control);
       if (button.dataset.key && !alreadyHeld) pressKeyAction(control);
     });
     const release = e => {
@@ -978,7 +1045,7 @@
     if (!action) return;
     e.preventDefault(); if (e.repeat) return;
     const alreadyHeld = keyHeld(e.code); pressed.add(e.code);
-    if (!alreadyHeld) pressKeyAction(e.code);
+    if (!alreadyHeld) { latchPress(e.code); pressKeyAction(e.code); }
   });
   window.addEventListener('keyup',e => {
     if(e.code==='KeyV'){sendEmote();return;}
@@ -1014,15 +1081,14 @@
   $('restart-button').onclick = () => { if (ready) { restartLevel(); canvas.focus({preventScroll:true}); } };
   $('checkpoint-button').onclick = () => { if(ready) { saveCheckpoint(); canvas.focus({preventScroll:true}); } };
   $('fullscreen-button').onclick = async () => {
-    if (mobileControls()) {
-      landscapeEnabled = !landscapeEnabled; updateOrientation(); return;
-    }
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
-      else if ($('app').requestFullscreen) await $('app').requestFullscreen();
-      else message(t('当前浏览器不支持页面全屏，可以横屏游玩。'));
-    } catch (_) { message(t('浏览器未进入全屏，可以继续窗口游玩。')); }
+      else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+      else { landscapeEnabled = true; updateOrientation(); message(t('当前浏览器不支持页面全屏，已使用横屏布局。')); }
+    } catch (_) { landscapeEnabled = true; updateOrientation(); message(t('浏览器未进入全屏，已使用横屏布局。')); }
   };
+  $('orientation-button').onclick = () => { landscapeEnabled = !landscapeEnabled; updateOrientation(); };
+  document.addEventListener('fullscreenchange',updateOrientation);
   $('speed').value = prefs.speed;
   $('shotFeedback').checked = prefs.shotFeedback;
   $('shotFeedback').onchange = e => {
@@ -1169,3 +1235,4 @@
   }
   boot();
 })();
+

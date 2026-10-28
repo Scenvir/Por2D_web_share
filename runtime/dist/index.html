@@ -21,6 +21,7 @@
   <header class="topbar">
     <a class="brand" href="./" aria-label="Por2D 首页"><span class="mark" aria-hidden="true"><i></i><i></i></span><strong>Por2D<span class="edition">WEB</span></strong></a>
     <span class="tagline">两扇门，无限种可能。</span>
+    <button id="orientation-button" type="button" aria-label="横屏布局" title="横屏布局" aria-pressed="false" hidden>横屏布局</button>
     <nav aria-label="游戏菜单"><button id="help-button" class="icon-button" disabled aria-label="玩法" title="玩法"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1 .7-1.5 1-1.5 2"/><path d="M12 16h.01"/></svg></button><button id="fullscreen-button" class="icon-button" aria-label="全屏" title="全屏"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></svg></button><button id="menu-button" class="menu-button icon-button" disabled aria-label="菜单（Esc）" title="菜单（Esc）"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 6h14M5 12h14M5 18h14"/></svg></button></nav>
   </header>
   <section class="game-shell" aria-label="游戏">
@@ -38,7 +39,8 @@
       <div id="pause-badge" hidden>已暂停</div>
       <div id="shot-feedback" role="status" aria-live="polite" hidden></div>
       <div id="checkpoint-feedback" role="status" aria-live="polite" hidden></div>
-      <button id="stage-menu-button" class="icon-button" hidden aria-label="打开菜单" title="打开菜单"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 6h14M5 12h14M5 18h14"/></svg></button>
+      <button id="room-button" class="stage-room-button" hidden aria-label="打开房间与席位" title="打开房间与席位">房间 / 席位</button>
+      <button id="stage-menu-button" class="icon-button" hidden aria-label="打开菜单" title="打开菜单"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 6h14M5 12h14M5 18h14"/></svg><span>菜单</span></button>
     </div>
     <div class="game-bottom"><span id="game-status">移动到出口，并让头部朝向与出口一致。</span><button id="checkpoint-button" class="icon-button" disabled aria-label="保存检查点（C）" title="保存检查点（C）：所有角色在传送门外静止 25 帧（正常速度 0.625 秒）"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 21V3m0 1c5-4 9 4 14 0v10c-5 4-9-4-14 0"/></svg></button><button id="restart-button" class="icon-button" disabled aria-label="返回检查点／重试（R）" title="返回检查点／重试（R）"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 10a8 8 0 1 1 1 7M4 4v6h6"/></svg></button></div>
   </section>
@@ -61,7 +63,7 @@
       <p id="menu-intro" class="intro">在二维世界里，用一对传送门连接空间。</p>
       <div class="home-actions"><button id="play-button" class="primary" disabled>开始游戏 <span>↗</span></button><button id="resume-button" class="primary" hidden>继续游戏</button><button id="menu-restart" hidden>重试本关</button></div>
       <div class="menu-grid"><button data-panel="levels">开始游戏 <span>选择关卡 · 开启冒险</span></button><button data-panel="settings">设置 <span>操作与显示</span></button><button data-panel="files">地图与回放 <span>导入 / 导出</span></button><button data-panel="help">玩法指南 <span>从这里开始</span></button></div>
-      <button class="coop-entry" data-panel="coop">多人联机 · 创建 / 加入房间</button>
+      <button id="room-menu-entry" class="coop-entry" data-panel="coop">多人联机 · 创建 / 加入房间</button>
       <div class="home-foot"><span class="blue-dot"></span><span class="orange-dot"></span><span>基础版规则 · 键鼠 / 触控</span></div>
     </section>
 <section id="levels-panel" class="panel" hidden><button class="back" data-panel="home">← 返回菜单</button><h2>选择章节与关卡</h2><label class="setting">战役章节 <select id="chapter"><option value="1">第一章 · 单人战役</option><option value="2">第二章 · 双角色合作</option><option value="3">第三章 · 重力机关</option></select></label><label class="setting">小节 <select id="chapter-section"><option value="campaign">战役</option><option value="1">小节 1</option></select></label><p id="chapter-description" class="muted"></p><div id="level-list" class="level-list"></div><div id="section-list" class="level-list" hidden></div><p id="section-empty" class="muted" hidden>本小节暂无地图。</p></section>
@@ -71,7 +73,10 @@
       <p class="muted">双人地图中角色互相阻挡，可以站在队友身上；两人都通过才进入下一关。打开菜单或失焦只清除你的输入，游戏不暂停。任一玩家可在设置中修改双方速度。瞄准预览只显示自己的，射线双方可见。</p>
       <p class="muted">无需等待队友即可开始；有空闲角色时，操作玩家可按 Ctrl 切换。房间码可自定义为 1–16 位字母、数字、横线或下划线，留空则随机生成。</p>
       <div class="row"><button id="coop-create" class="primary">创建房间</button><input id="coop-code" aria-label="房间码" placeholder="自定义 / 加入房间编号" maxlength="16" autocomplete="off"><button id="coop-join">加入房间</button></div>
-      <p id="coop-room" class="muted" role="status"></p><select id="coop-role" aria-label="选择操作角色" hidden></select><button id="coop-seat" hidden>进入观战席</button><button id="chat-menu-open" hidden>房间聊天</button><button id="coop-menu-leave" hidden>离开房间</button>
+      <p id="coop-room" class="muted" role="status" aria-live="polite"></p>
+      <div id="seat-controls" class="room-seat-controls"><select id="coop-role" aria-label="选择操作角色" hidden></select><button id="coop-seat" hidden>进入观战席</button></div>
+      <p id="seat-status" class="muted small" role="status" aria-live="polite"></p>
+      <div class="row room-actions"><button id="room-resume" class="primary" hidden>返回游戏</button><button id="chat-menu-open" hidden>房间聊天</button><button id="coop-menu-leave" hidden>离开房间</button></div>
       <div id="room-management" hidden><h3>房间玩家</h3><p id="room-access" class="muted"></p><button id="room-lock" hidden>锁定房间</button><p class="muted small">房主可踢出玩家；踢出后自动锁房，阻止重新加入。房主离开后由列表中的下一位玩家接任。</p><div id="room-members"></div></div>
     </section>
     <section id="settings-panel" class="panel" hidden><button class="back" data-panel="home">← 返回菜单</button><h2>按你的方式游玩</h2>
@@ -119,3 +124,4 @@
 </main>
 </body>
 </html>
+

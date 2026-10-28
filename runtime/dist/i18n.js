@@ -2,6 +2,28 @@
 // UI messages only. Interpolated map names, room codes and chat remain literal text.
 const Por2I18n = (() => {
   const en = {
+    '连接已离开房间，请重新加入。':'You have left the room. Please rejoin.',
+    '旧席位请求已忽略，请重新选择。':'An outdated seat request was ignored. Please choose again.',
+    '关卡已更新，请等待同步后重新选择操作席。':'The level changed. Wait for synchronization before taking a seat.',
+    '无效的席位请求。':'Invalid seat request.',
+    '正在同步关卡，请完成同步后进入操作席。':'Wait for synchronization before taking a control seat.',
+    '设备或网络暂时无法跟上房间，已释放操作席。请重试加入或降低房间速度。':'Your device or network cannot keep up. Your seat was released. Rejoin or lower the room speed.',
+    '连接长时间未响应，操作席已释放，请重新加入。':'The connection stopped responding. Your seat was released. Please rejoin.',
+    '房间 / 席位':'Room / Seats',
+    '联机房间':'Multiplayer room',
+    '当前房间 · 席位与成员':'Current room · Seats and members',
+    '横屏布局':'Landscape layout',
+    '退出横屏布局':'Exit landscape layout',
+    '正在切换…':'Switching…',
+    '正在切换席位…':'Switching seats…',
+    '正在同步关卡…':'Synchronizing level…',
+    '正在同步关卡 · 还差 {0} 帧':'Synchronizing level · {0} frames remaining',
+    '席位切换未确认，请检查连接后重试。':'Seat change was not confirmed. Check your connection and retry.',
+    '席位切换失败，请重试。':'Seat change failed. Please retry.',
+    '已进入操作席。':'You now control this character.',
+    '已进入观战席。':'You are now spectating.',
+    '当前浏览器不支持页面全屏，已使用横屏布局。':'Page fullscreen is unavailable; using landscape layout.',
+    '浏览器未进入全屏，已使用横屏布局。':'Fullscreen was declined; using landscape layout.',
     'Ctrl · 切换空闲角色':'Ctrl · Switch to a vacant character',
     '版本不一致，请重启联机服务并刷新双方网页。':'Version mismatch. Restart the multiplayer server and refresh both pages.',
     '无需等待队友即可开始；有空闲角色时，操作玩家可按 Ctrl 切换。房间码可自定义为 1–16 位字母、数字、横线或下划线，留空则随机生成。':'Start without waiting for a teammate; operators can press Ctrl to switch to a vacant character. Room codes accept 1–16 letters, numbers, hyphens or underscores; leave blank for a random code.',
@@ -375,3 +397,4 @@ const Por2I18n = (() => {
   }
   return Object.freeze({text,setLanguage});
 })();
+

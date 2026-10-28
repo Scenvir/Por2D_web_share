@@ -14,22 +14,38 @@ dialog{width:min(610px,calc(100vw - 28px));max-height:calc(100dvh - 40px);paddin
 @media(max-width:800px){#app{padding:0 16px 12px}.topbar{height:76px;gap:12px}.tagline{display:none}.footer-note{display:none}.desktop-hints{gap:10px}.brand{font-size:23px}.edition{margin-left:8px}nav button{padding:8px 10px}.topbar kbd{display:none}}
 @media(max-width:520px){#app{padding:0 max(10px,env(safe-area-inset-left)) max(12px,env(safe-area-inset-bottom))}.topbar{height:68px}.brand{gap:8px;font-size:22px}.mark i{height:25px;width:11px;border-width:2px}.edition{font-size:8px}.game-top{padding:10px;font-size:11px}#mode-label{font-size:9px}.game-bottom{padding:7px 9px;font-size:10px}.topbar nav{gap:4px}nav button{padding:7px;font-size:11px}#touch-controls{gap:5px}#touch-controls button{padding:7px 9px;min-width:40px;font-size:12px}.touch-group,.portal-group{gap:4px}.footer{padding:15px 0;font-size:10px}dialog{padding:22px;max-height:calc(100dvh - 24px)}h1{font-size:42px}.level-list{gap:7px}.level-list button{padding:10px 8px;font-size:13px}}
 @media(max-height:550px) and (orientation:landscape){#app{padding:0 max(12px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom))}.topbar{height:46px}.brand{font-size:20px}.game-shell{max-width:calc((100dvh - 137px)*5/3);margin:auto}.game-top{min-height:25px;padding:5px 10px;font-size:10px}.game-bottom{min-height:26px;padding:3px 9px}.game-bottom button{font-size:10px;padding:2px 6px}#touch-controls{position:fixed;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));bottom:8px;padding:0;pointer-events:none}#touch-controls button{pointer-events:auto;min-height:42px}.footer{padding:9px 0;justify-content:center}.footer .touch-hint{display:none}.footer-note{display:none}.extra-bar{padding:5px;margin-top:5px;font-size:11px}.extra-bar button{padding:4px 7px}.extra-bar p{display:none}#notice{font-size:10px;min-height:15px}dialog{max-height:calc(100dvh - 16px)}h1{font-size:35px;margin:14px 0}.intro{margin:10px 0 15px}.home-foot{margin-top:13px}}
-#stage-menu-button{position:absolute;top:10px;right:10px;min-height:40px;background:#19221fe8;font-size:12px}#pause-badge{right:100px}
+#stage-menu-button{position:absolute;top:10px;right:10px;min-height:44px;background:#19221fe8;font-size:12px;gap:5px;z-index:8}#pause-badge{right:100px}
+.stage-room-button{position:absolute;top:10px;left:10px;min-height:44px;max-width:calc(100% - 120px);padding:8px 12px;border-color:#739669;background:#19221ff2;color:var(--mint);font-size:12px;font-weight:600;z-index:8;touch-action:manipulation}
+#orientation-button{font-size:12px;min-height:44px;white-space:nowrap}
+.room-seat-controls{display:flex;align-items:stretch;flex-wrap:wrap;gap:10px;margin:14px 0 0}
+.room-seat-controls select{flex:1;min-width:120px;min-height:44px;padding:10px;background:#111817;color:var(--text);border:1px solid var(--line);border-radius:8px}
+.room-seat-controls button{min-height:44px;flex:1;min-width:140px}
+#seat-status{min-height:1.6em;margin:8px 0 14px}
+.room-actions button{min-height:44px}
+html:fullscreen{background:var(--bg);overflow:auto}
+html:fullscreen #app{max-width:none;min-height:100dvh;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));padding-top:env(safe-area-inset-top);padding-bottom:max(12px,env(safe-area-inset-bottom))}
+html:fullscreen .topbar{height:60px}
+html:fullscreen .game-shell{max-width:min(100%,calc((100dvh - 175px)*5/3));margin-inline:auto}
+html:fullscreen body.touch .game-shell{max-width:min(100%,calc((100dvh - 220px)*5/3))}
+html:fullscreen #touch-controls{max-width:1000px;margin-inline:auto}
+@media(max-width:520px){.topbar{height:auto;min-height:68px;flex-wrap:wrap;padding-block:10px;gap:8px}.topbar nav{flex-wrap:wrap;justify-content:flex-end}.topbar #orientation-button{padding:7px;font-size:11px}.topbar .edition{display:none}html:fullscreen .topbar{height:auto}}
 .coop-entry{width:100%;margin-top:12px}#coop-code{width:150px;min-width:0;background:#111817;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;text-transform:uppercase}#coop-bar{color:var(--mint)}
 #touch-controls{flex-wrap:wrap}#touch-controls button[hidden]{display:none}#switch-player{color:var(--mint)}
 #touch-controls .touch-group:has(>button[hidden]:only-child){display:none}
-body.landscape-game{overflow:hidden;--game-width:100dvw;--game-height:100dvh;background:#000}
-body.force-landscape{--game-width:100dvh;--game-height:100dvw}
+body.landscape-game{overflow:hidden;--game-width:100dvw;--game-height:100dvh;--game-safe-top:env(safe-area-inset-top,0px);--game-safe-right:env(safe-area-inset-right,0px);--game-safe-bottom:env(safe-area-inset-bottom,0px);--game-safe-left:env(safe-area-inset-left,0px);background:#000}
+body.force-landscape{--game-width:100dvh;--game-height:100dvw;--game-safe-top:env(safe-area-inset-right,0px);--game-safe-right:env(safe-area-inset-bottom,0px);--game-safe-bottom:env(safe-area-inset-left,0px);--game-safe-left:env(safe-area-inset-top,0px)}
 body.landscape-game #app{position:fixed;inset:0;width:var(--game-width);height:var(--game-height);max-width:none;padding:0;overflow:hidden;background:#000}
 body.force-landscape #app{left:100dvw;right:auto;bottom:auto;transform:rotate(90deg);transform-origin:0 0}
 body.landscape-game .topbar,body.landscape-game .footer,body.landscape-game #notice,body.landscape-game .game-top,body.landscape-game .game-bottom,body.landscape-game .extra-bar{display:none}
 body.landscape-game #app .game-shell{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(var(--game-width),calc(var(--game-height)*5/3));max-width:none;margin:0;border:0;border-radius:0}
-body.landscape-game #touch-controls{position:absolute;left:8px;right:8px;bottom:8px;width:auto;padding:0;margin:0;flex-wrap:nowrap;pointer-events:none;gap:5px}
+body.landscape-game #touch-controls{position:absolute;left:max(8px,var(--game-safe-left));right:max(8px,var(--game-safe-right));bottom:max(8px,var(--game-safe-bottom));width:auto;padding:0;margin:0;flex-wrap:nowrap;pointer-events:none;gap:5px}
 body.landscape-game #touch-controls button{pointer-events:auto;min-width:40px;min-height:44px;padding:6px 9px;background:#19221fbf}
-body.landscape-game #fullscreen-button,body.landscape-game #restart-button{position:absolute;top:8px;left:8px;min-height:40px;padding:6px 9px;font-size:12px;background:#19221fbf}
-body.landscape-game #restart-button{left:auto;right:58px}
-body.landscape-game #checkpoint-button{position:absolute;top:8px;right:108px;min-height:40px;padding:6px 9px;font-size:12px;background:#19221fbf}
-body.landscape-game #stage-menu-button{top:8px;right:8px;background:#19221fbf}
+body.landscape-game #fullscreen-button,body.landscape-game #orientation-button,body.landscape-game #restart-button{position:absolute;top:max(8px,var(--game-safe-top));left:max(8px,var(--game-safe-left));min-height:44px;padding:6px 9px;font-size:12px;background:#19221fe8;z-index:8}
+body.landscape-game #orientation-button{left:calc(max(8px,var(--game-safe-left)) + 52px);max-width:110px}
+body.landscape-game #restart-button{left:auto;right:calc(max(8px,var(--game-safe-right)) + 88px)}
+body.landscape-game #checkpoint-button{position:absolute;top:max(8px,var(--game-safe-top));right:calc(max(8px,var(--game-safe-right)) + 138px);min-height:44px;padding:6px 9px;font-size:12px;background:#19221fe8;z-index:8}
+body.landscape-game #stage-menu-button{top:max(8px,var(--game-safe-top));right:max(8px,var(--game-safe-right));background:#19221fe8}
+body.landscape-game #room-button{top:calc(max(8px,var(--game-safe-top)) + 52px);left:max(8px,var(--game-safe-left));max-width:180px}
 body.force-landscape dialog{position:fixed;inset:auto;left:50%;top:50%;margin:0;transform:translate(-50%,-50%) rotate(90deg);width:min(610px,calc(100dvh - 24px));max-width:calc(100dvh - 24px);max-height:calc(100dvw - 20px);padding:20px}
 #chat-log{height:200px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:10px;overflow-wrap:anywhere}#chat-log p{margin:4px 0;white-space:pre-wrap}#chat-form{margin-top:12px}#chat-input{flex:1;min-width:0;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px}#chat-notice{color:var(--orange);font-size:13px}#chat:modal{max-height:calc(100dvh - 24px)}
 .level-list button.secret-level{background:#8f292f;border-color:#de6269;color:#fff}
@@ -55,3 +71,4 @@ body.body-lesson #touch-controls { display:none !important; }
 body.teaching #tutorial-chapter-note{color:#c2e2b5;border-left:3px solid #81c79c;padding-left:8px;line-height:1.5}
 /* Checkpoint feedback stays visible inside the game, including fullscreen. */
 #checkpoint-feedback{position:absolute;top:54px;left:50%;transform:translateX(-50%);max-width:85%;padding:10px 14px;border:1px solid #ddad69;border-radius:6px;background:#18201ef2;color:#ffe1ac;font-size:14px;text-align:center;pointer-events:none;z-index:15}
+

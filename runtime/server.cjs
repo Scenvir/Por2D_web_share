@@ -28,7 +28,8 @@ function playableMap(text) {
   return JSON.stringify(map);
 }
 
-function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000, readyTimeoutMs = 15000} = {}) {
+function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000, readyTimeoutMs = 15000,
+  catchupTimeoutMs = 8000, maxCatchupLagFrames = 160, ackTimeoutMs = 8000} = {}) {
   root = path.resolve(root);
   const createCore = require(path.join(root,'por2.js'));
   const catalogs = new WeakMap();
@@ -49,6 +50,12 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
   const rooms = new Map();
   const representation = require('./http-compression.cjs')();
   const server = http.createServer(async (req,res) => {
+    const requestStarted=performance.now();let pageRequest=false;
+    res.once('finish',()=>{
+      if(pageRequest && req.method==='GET') console.log(JSON.stringify({time:new Date().toISOString(),
+        service:'http',event:'request',ip:req.socket.remoteAddress,kind:'page',status:res.statusCode,
+        durationMs:Math.round(performance.now()-requestStarted)}));
+    });
     // Errors and live API responses must never become cached static resources.
     res.setHeader('Cache-Control','no-store');
     try {
@@ -72,6 +79,7 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
       if (fs.statSync(file).isDirectory()) file = path.join(file,'index.html');
       const real = fs.realpathSync(file);
       if (!real.startsWith(fs.realpathSync(root)+path.sep)) { res.writeHead(403); return res.end(); }
+      pageRequest=path.extname(file)==='.html';
       const type = {'.svg':'image/svg+xml', '.html':'text/html;charset=utf-8','.js':'text/javascript;charset=utf-8','.css':'text/css;charset=utf-8','.wasm':'application/wasm','.json':'application/json','.flac':'audio/flac','.opus':'audio/ogg'};
       res.setHeader('Content-Type',type[path.extname(file)] || 'text/plain;charset=utf-8');
       res.setHeader('X-Content-Type-Options','nosniff');
@@ -128,13 +136,24 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
     room.lastCursors = null;
     room.members.forEach(ws => send(ws,{type:'status',player:ws.player,speed:room.speed,members:room.members.length,locked:room.locked,roster:room.members.map(peer=>({id:peer.memberId,player:peer.player,ready:peer.ready,host:peer.player===0})),owners:room.owners,crowns:crowns(room),waiting:false,paused:room.members.map(peer => !peer.ready && (!peer.catchingUp || peer === ws))}));
   };
-  const resetInput = ws => { ws.flags = 0; ws.clearJump = true; ws.shots = []; ws.cursor = null; ws.spectate = false; };
+  const resetInput = ws => { ws.flags = 0; ws.pressedFlags = 0; ws.clearJump = true; ws.shots = []; ws.cursor = null; ws.spectate = false; };
+  const beginCatchUp = (room,ws,retry = false) => {
+    if(retry)ws.log('sync_retry',{session:ws.roomSession,lag:Math.max(0,room.sequence-ws.ack),retry:(ws.catchupRetries || 0)+1});
+    const snapshot = room.core.UTF8ToString(room.core._web_snapshot());
+    resetInput(ws); ws.ready = false; ws.ack = room.sequence;
+    ws.catchingUp = true; ws.snapshotReady = false; ws.sentThrough = ws.ack;
+    ws.catchupStarted = ws.catchupProgress = ws.lastAckProgress = performance.now();
+    ws.catchupRetries = retry ? (ws.catchupRetries || 0)+1 : 0;
+    send(ws,{...startMessage(room,snapshot,ws.ack),syncRetry:ws.catchupRetries});
+    status(room);
+  };
   const catchUp = (room,ws) => {
     if (!ws.catchingUp || !ws.snapshotReady || ws.ack !== ws.sentThrough) return;
     if (ws.ack === room.sequence) {
-      ws.catchingUp = false; ws.messages = 0; ws.ready = true; status(room);
+      ws.catchingUp = false; ws.messages = 0; ws.ready = true; ws.lastAckProgress = performance.now(); status(room);
     } else {
       const end = Math.min(ws.ack+100,room.sequence);
+      send(ws,{type:'sync_progress',remaining:room.sequence-ws.ack,retry:ws.catchupRetries || 0});
       for (let i=ws.ack;i<end;i++) send(ws,room.history[i-room.historyStart]);
       ws.sentThrough = end;
     }
@@ -142,13 +161,15 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
   const endRoom = (ws,reason) => {
     const room = ws.room;
     if (!room) return;
-    ws.log('room_leave', {room:room.code, reason});
+    ws.log('room_leave', {room:room.code,reason,session:ws.roomSession,
+      durationMs:Math.round(performance.now()-ws.roomJoinedAt)});
     const oldMembers = [...room.members];
     room.members = room.members.filter(peer => peer !== ws);
     ws.room = null; ws.idleSince = performance.now(); resetInput(ws); send(ws,{type:'ended',reason});
     if (!room.members.length) { rooms.delete(room.code); return; }
     room.owners = room.owners.map(id => room.members.indexOf(oldMembers[id]));
-    room.members.forEach((peer,i) => { peer.player=i; resetInput(peer); });
+    // Reindexing a departed member must not interrupt another player's hold.
+    room.members.forEach((peer,i) => { peer.player=i; });
     status(room);
   };
   const start = room => {
@@ -159,7 +180,7 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
     const previousOwners = room.owners;
     room.owners = Array.from({length:count(room)},(_,i)=>previousOwners[i] ?? (!previousOwners.length && i===0 ? 0 : -1));
     room.restart = false; room.checkpoint = false; room.clock = 0; room.lastTime = performance.now();
-    for (const ws of room.members) { resetInput(ws); ws.ack = 0; ws.ready = false; ws.catchingUp = false; ws.readySince = performance.now(); }
+    for (const ws of room.members) { resetInput(ws); ws.ack = 0; ws.ready = false; ws.catchingUp = false; ws.readySince = ws.lastAckProgress = performance.now(); }
     broadcast(room,startMessage(room));
     status(room);
     scheduleRooms();
@@ -182,6 +203,15 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
         const msg = JSON.parse(data.toString());
         if (!msg || typeof msg !== 'object') return;
         const error = text => send(ws,{type:'error',message:text});
+        const requestId=Number.isSafeInteger(msg.requestId) && msg.requestId>=0 ? msg.requestId : undefined;
+        const seatResult = (ok,message) => {
+          const result={type:'seat_result',ok,message,seat:msg.seat,
+            role:ws.room ? ws.room.owners.indexOf(ws.player) : -1,requestId};
+          if(requestId!==undefined && requestId===ws.lastSeatRequest?.id)ws.lastSeatResult=result;
+          ws.log('seat_result',{session:ws.roomSession,ok,seat:msg.seat==='watch'?'watch':'operate',role:result.role});
+          send(ws,result);
+        };
+        const seatError = text => { error(text); seatResult(false,text); };
         if(!['create','map'].includes(msg.type) && data.length > 4096) { ws.logCloseReason = 'oversized_control'; return ws.close(1008,'Control message too large'); }
         if (msg.type === 'create' || msg.type === 'join') {
           if (ws.room || ws.joinPending) return error('请先离开当前房间或等待加载。');
@@ -213,7 +243,8 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
           }
           ws.crownUnlocked = msg.crownUnlocked === true; ws.crownVisible = msg.crownVisible === true;
           ws.room = room; ws.player = room.members.length; room.members.push(ws);
-          ws.log(msg.type === 'create' ? 'room_create' : 'room_join', {room:room.code, player:ws.player});
+          ws.roomSession=crypto.randomUUID();ws.roomJoinedAt=performance.now();
+          ws.log(msg.type === 'create' ? 'room_create' : 'room_join', {room:room.code,player:ws.player,session:ws.roomSession});
           send(ws,{type:'joined',code:room.code,player:ws.player});
           if (room.members.length === 1) start(room);
           else {
@@ -221,17 +252,22 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
             if(vacant>=0)room.owners[vacant]=ws.player;
             // Capture a complete state at this exact frame. The event loop cannot
             // advance the room between snapshot creation and registering the peer.
-            const snapshot=room.core.UTF8ToString(room.core._web_snapshot());
-            ws.ack = room.sequence;
-            ws.catchingUp = true; ws.snapshotReady = false; ws.sentThrough = ws.ack;
-            ws.catchupProgress = performance.now();
-            send(ws,startMessage(room,snapshot,ws.ack));
-            status(room);
+            beginCatchUp(room,ws);
           }
           return;
         }
         const room = ws.room;
-        if (!room) return;
+        if (!room) { if(msg.type === 'seat') seatError('连接已离开房间，请重新加入。'); return; }
+        if(msg.type==='seat' && requestId!==undefined) {
+          const previous=ws.lastSeatRequest;
+          if(previous && requestId<=previous.id) {
+            if(requestId===previous.id && msg.seat===previous.seat && msg.role===previous.role && ws.lastSeatResult)
+              send(ws,{...ws.lastSeatResult,role:room.owners.indexOf(ws.player)});
+            else send(ws,{type:'seat_result',ok:false,message:'旧席位请求已忽略，请重新选择。',seat:msg.seat,role:room.owners.indexOf(ws.player),requestId});
+            return;
+          }
+          ws.lastSeatRequest={id:requestId,seat:msg.seat,role:msg.role};ws.lastSeatResult=null;
+        }
         if(msg.type === 'kick' || msg.type === 'lock') {
           if(ws !== room.members[0]) return error('只有房主可以管理玩家。');
           if(msg.epoch !== room.epoch) return error('房间已更新，请重试。');
@@ -259,12 +295,22 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
           return;
         }
         if (msg.type === 'leave') return endRoom(ws,'联机已结束，已返回单人模式。');
+        // Relinquishing a seat is always safe in this connection's current room.
+        // A level change can race the click; never silently discard that release.
+        if (msg.type === 'seat' && msg.seat === 'watch') {
+          resetInput(ws);
+          room.owners = room.owners.map(owner => owner === ws.player ? -1 : owner);
+          status(room); seatResult(true); return;
+        }
         if (msg.type === 'level' && ws.player === 0 && validLevel(room.core,msg)) {
           room.level = msg.level; room.map = null; room.chapter = msg.chapter; room.section = msg.section;
           start(room);
           return;
         }
-        if (msg.epoch !== room.epoch) return;
+        if (msg.epoch !== room.epoch) {
+          if (msg.type === 'seat') seatError('关卡已更新，请等待同步后重新选择操作席。');
+          return;
+        }
         if(msg.type === 'map' && ws.player === 0) {
           try {room.map=playableMap(msg.map);} catch(e){return error(e.message);}
           room.level=-1;room.chapter=0;room.section=0;start(room);return;
@@ -278,14 +324,14 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
         if (msg.type === 'ready') {
           const wasBlocked = room.members.some(peer => !peer.ready && !peer.catchingUp);
           if (ws.catchingUp) { ws.snapshotReady = true; catchUp(room,ws); }
-          else ws.ready = true;
+          else { ws.ready = true; ws.lastAckProgress = performance.now(); }
           if (wasBlocked) { room.clock = 0; room.lastTime = performance.now(); }
           scheduleRooms();
           status(room); return;
         }
         if (msg.type === 'clear') { resetInput(ws); return; }
         if (msg.type === 'ack' && (!ws.catchingUp || ws.snapshotReady) && Number.isInteger(msg.sequence) && msg.sequence >= ws.ack && msg.sequence <= (ws.catchingUp ? ws.sentThrough : room.sequence)) {
-          if (msg.sequence > ws.ack) ws.catchupProgress = performance.now();
+          if (msg.sequence > ws.ack) ws.catchupProgress = ws.lastAckProgress = performance.now();
           ws.ack = msg.sequence;
           catchUp(room,ws);
           return;
@@ -302,20 +348,15 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
           return;
         }
         if (msg.type === 'seat') {
-          if(!['operate','watch'].includes(msg.seat))return;
+          if(msg.seat!=='operate')return seatError('无效的席位请求。');
           const role=room.owners.indexOf(ws.player);
-          if(msg.seat === 'watch') {
-            resetInput(ws);
-            if(role>=0)room.owners[role]=-1;
-          } else {
-            if(!ws.ready)return;
-            const vacant=msg.role ?? room.owners.indexOf(-1);
-            if(!Number.isInteger(vacant) || vacant<0 || vacant>=room.owners.length || (room.owners[vacant]>=0 && room.owners[vacant]!==ws.player))return error('该操作席不可用，请选择空闲角色。');
-            resetInput(ws);
-            if(role>=0)room.owners[role]=-1;
-            room.owners[vacant]=ws.player;
-          }
-          status(room); return;
+          if(!ws.ready)return seatError('正在同步关卡，请完成同步后进入操作席。');
+          const vacant=msg.role ?? room.owners.indexOf(-1);
+          if(!Number.isInteger(vacant) || vacant<0 || vacant>=room.owners.length || (room.owners[vacant]>=0 && room.owners[vacant]!==ws.player))return seatError('该操作席不可用，请选择空闲角色。');
+          resetInput(ws);
+          if(role>=0)room.owners[role]=-1;
+          room.owners[vacant]=ws.player;
+          status(room); seatResult(true); return;
         }
         if (msg.type === 'emote' && ws.ready) {
           if(!['up','right','down','left','yes','no','question','exclamation'].includes(msg.emote) || !validPoint(msg))return;
@@ -327,10 +368,14 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
         if (msg.type === 'input') {
           if (!ws.ready) return;
           if (!Number.isInteger(msg.flags) || msg.flags < 0 || msg.flags > 415 || (msg.flags & ~415)) return;
+          if (msg.pressed !== undefined && (!Number.isInteger(msg.pressed) || msg.pressed < 0 || (msg.pressed & ~151))) return;
           ws.cursor = cursorPoint(msg.cursor);
           if(!room.owners.includes(ws.player))return;
           if (msg.flags & 256) ws.clearJump = true;
-          ws.flags = msg.flags & 151; // Restart is an edge, never a held input.
+          const held = msg.flags & 151; // Restart is an edge, never a held input.
+          // Keep taps until one authoritative tick even if release arrives first.
+          ws.pressedFlags |= (held & ~ws.flags) | (msg.pressed || 0);
+          ws.flags = held;
           if (Array.isArray(msg.shots)) for (const shot of msg.shots.slice(0,16))
             if (validPoint(shot) && (shot.portal === 0 || shot.portal === 1) && ws.shots.length < 16)
               ws.shots.push({portal:shot.portal,x:shot.x,y:shot.y});
@@ -361,10 +406,26 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
       const now = performance.now();
       const elapsed = Math.max(0,now-(room.lastTime ?? now));
       room.lastTime = now;
-      for (const peer of [...room.members]) if (peer.catchingUp && now-peer.catchupProgress > 10000)
+      for (const peer of [...room.members]) if (peer.catchingUp && now-peer.catchupProgress > 10000) {
+        peer.log('sync_timeout',{session:peer.roomSession,reason:'no_progress',lag:Math.max(0,room.sequence-peer.ack)});
         endRoom(peer,'同步长时间未响应，请重新加入。');
+      }
+      for (const peer of [...room.members]) if (peer.catchingUp &&
+          (now-peer.catchupStarted > catchupTimeoutMs || room.sequence-peer.ack > maxCatchupLagFrames)) {
+        if ((peer.catchupRetries || 0) < 1) beginCatchUp(room,peer,true);
+        else {
+          peer.log('sync_timeout',{session:peer.roomSession,reason:'catchup_limit',lag:Math.max(0,room.sequence-peer.ack)});
+          endRoom(peer,'设备或网络暂时无法跟上房间，已释放操作席。请重试加入或降低房间速度。');
+        }
+      }
       for (const peer of [...room.members]) if (!peer.ready && !peer.catchingUp && now-peer.readySince > readyTimeoutMs)
         endRoom(peer,'加载长时间未就绪，请重新加入。');
+      // Wall time matters at slow room speeds too. A suspended client must not
+      // hold a seat for the 250-frame limit (over a minute at 0.1x).
+      for (const peer of [...room.members]) if (peer.ready && !peer.catchingUp && room.sequence > peer.ack && now-peer.lastAckProgress > ackTimeoutMs) {
+        peer.log('sync_timeout',{session:peer.roomSession,reason:'ack_timeout',lag:Math.max(0,room.sequence-peer.ack)});
+        endRoom(peer,'连接长时间未响应，操作席已释放，请重新加入。');
+      }
       if (!room.members.length || room.members.some(ws => !ws.ready && !ws.catchingUp)) { room.clock=0; continue; }
       // Background menus never pause the room. A suspended/disconnected browser must rejoin.
       if (room.members.some(ws => !ws.catchingUp && room.sequence-ws.ack > 250)) {
@@ -381,8 +442,8 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
       const players = room.owners.map(id => {
         const ws=room.members[id];
         if(!ws?.ready)return {flags:256 | (room.restart ? 8 : 0) | (room.checkpoint ? 64 : 0),shots:[]};
-        const input = {flags:ws.flags | (ws.clearJump ? 256 : 0) | (room.restart ? 8 : 0) | (room.checkpoint ? 64 : 0) | (ws.spectate ? 32 : 0),shots:ws.shots};
-        ws.shots = []; ws.spectate = false; ws.clearJump = false; return input;
+        const input = {flags:ws.flags | ws.pressedFlags | (ws.clearJump ? 256 : 0) | (room.restart ? 8 : 0) | (room.checkpoint ? 64 : 0) | (ws.spectate ? 32 : 0),shots:ws.shots};
+        ws.shots = []; ws.spectate = false; ws.clearJump = false; ws.pressedFlags = 0; return input;
       });
       room.restart = false; room.checkpoint = false;
       const frame={type:'frame',epoch:room.epoch,sequence:++room.sequence,players};
@@ -489,3 +550,4 @@ if (require.main === module) {
   });
   for (const signal of ['SIGINT','SIGTERM']) process.once(signal,() => app.close());
 }
+

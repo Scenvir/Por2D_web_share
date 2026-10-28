@@ -1,0 +1,26 @@
+Por2D 私有服务器访问统计
+
+在服务器上安装简洁指令后：
+  por2d-stats today
+  por2d-stats 2026-10-28
+
+未安装指令时，分享包内可直接运行（需要 Node.js）：
+  journalctl -u por2d.service --since "7 days ago" -o cat --no-pager | node runtime/server-stats.cjs --date today
+  node runtime/server-stats.cjs --file server.jsonl --date 2026-10-28
+  node runtime/server-stats.cjs --help
+
+默认按 Asia/Shanghai（北京时间）分日。可用 --timezone 指定其他 IANA 时区，--json 输出机器可读统计。
+输入须为按时间顺序排列的 JSON 日志行。支持 journalctl -o cat 与 -o json；普通启动提示和无法解析的行会跳过。
+工具只读输入，不连接服务器、不修改日志、不上传数据；默认只展示汇总，不列出 IP 地址。
+
+统计口径：
+- 独立 IP 不等于人数。同一 Wi-Fi 可能共用一个 IP，手机切换网络也可能换 IP。
+- 网页加载次数为成功 HTML GET 响应（含缓存校验 304）。刷新会再次计数；不是去重浏览会话。
+- 静态资源请求不记录，不把每个 JS、图片或音频当成一次访问。
+- 游戏连接与进入房间次数分开；同一连接可以多次进入房间。
+- 已结束连接/房间会话按选定日期裁剪并累加时长，包含观战、菜单与空闲；不能等同有效游玩时长。
+- 没有结束记录的连接/房间不计入时长。可能仍在线，也可能因重启、截断或日志轮转而缺失结束记录。
+- 工具仅能统计保留且输入的日志。升级前没有网页日志，不能补算过去的网页访问次数。
+- 跨日会话尽量提供足够早的日志；结束事件携带 durationMs 时可推算起点，否则缺少起点的时长不计。
+
+日志位于服务器私有日志系统，不通过网站公开。请勿把原始日志上传公开仓库或贴到公开频道。
