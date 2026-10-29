@@ -69,6 +69,8 @@ body.body-lesson #touch-controls { display:none !important; }
 .split-body #body-lesson-note{bottom:7%}
 #tutorial-subchapter{position:absolute;top:2%;left:2%;max-width:74%;border:1px solid #6d9e84;font-weight:600}
 body.teaching #tutorial-chapter-note{color:#c2e2b5;border-left:3px solid #81c79c;padding-left:8px;line-height:1.5}
+#client-performance{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);max-width:calc(100% - 24px);padding:4px 8px;border-radius:5px;background:#101915e8;color:#e0ecdd;font:11px/1.5 monospace;white-space:pre-line;text-align:center;pointer-events:none;z-index:6;font-variant-numeric:tabular-nums}
+body.landscape-game #client-performance{bottom:76px}
 /* Checkpoint feedback stays visible inside the game, including fullscreen. */
 #checkpoint-feedback{position:absolute;top:54px;left:50%;transform:translateX(-50%);max-width:85%;padding:10px 14px;border:1px solid #ddad69;border-radius:6px;background:#18201ef2;color:#ffe1ac;font-size:14px;text-align:center;pointer-events:none;z-index:15}
 

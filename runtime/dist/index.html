@@ -37,6 +37,7 @@
       </div>
       <div id="loading" class="stage-message"><span class="spinner"></span><strong>正在连接两扇门</strong><p id="load-status">加载游戏核心…</p></div>
       <div id="pause-badge" hidden>已暂停</div>
+      <div id="client-performance" hidden></div>
       <div id="shot-feedback" role="status" aria-live="polite" hidden></div>
       <div id="checkpoint-feedback" role="status" aria-live="polite" hidden></div>
       <button id="room-button" class="stage-room-button" hidden aria-label="打开房间与席位" title="打开房间与席位">房间 / 席位</button>
@@ -91,6 +92,8 @@
       <label class="setting">背景音乐音量 <input id="music-volume" type="range" min="0" max="100" step="1" value="30"><output id="music-volume-value" for="music-volume">30%</output></label>
       <label class="setting">显示头部标记 <input id="debug" type="checkbox" checked></label>
       <label class="setting">辅助网格 <input id="grid" type="checkbox"></label>
+      <label class="setting">本机性能面板（本次会话） <input id="performance-toggle" type="checkbox" aria-describedby="performance-help"></label>
+      <p id="performance-help" class="muted small">FPS 为页面刷新频率；RTT 为本机与服务的往返耗时；距同步帧为收到上一有效联机帧后的时间，不是网络延迟。仅显示本机数据，不保存；面板开启时每 5 秒发送一次测速请求。— 表示暂无测量。</p>
       <label class="setting">显示已解锁皇冠 <input id="crown" type="checkbox" checked></label>
       <label class="setting">显示触控按钮 <select id="touch-mode"><option value="auto">自动</option><option value="on">始终显示</option><option value="off">隐藏</option></select></label>
       <h3>键盘操作</h3><p class="muted">点击键位后按新键，Esc 取消。鼠标左右键始终可放门。</p><div id="bindings" class="bindings"></div><button id="reset-bindings">恢复默认键位</button>

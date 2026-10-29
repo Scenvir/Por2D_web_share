@@ -25,6 +25,12 @@ function selectEncoding(header, compressible) {
     .sort((a,b) => quality(b)-quality(a))[0];
 }
 
+async function compress(data, encoding) {
+  return encoding === 'br'
+    ? brotli(data, {params:{[zlib.constants.BROTLI_PARAM_QUALITY]:5}})
+    : gzip(data, {level:6});
+}
+
 module.exports = function createCompression() {
   const cache = new Map();
   const limit = 16 * 1024 * 1024;
@@ -37,9 +43,7 @@ module.exports = function createCompression() {
     // Content hashes prevent stale responses even if a file keeps its timestamp.
     const key = encoding + ':' + createHash('sha256').update(data).digest('hex');
     let compressed = cache.get(key);
-    if (!compressed) compressed = encoding === 'br'
-      ? await brotli(data, {params:{[zlib.constants.BROTLI_PARAM_QUALITY]:5}})
-      : await gzip(data, {level:6});
+    if (!compressed) compressed = await compress(data, encoding);
     if (cache.has(key)) { bytes -= cache.get(key).length; cache.delete(key); }
     if (compressed.length <= limit) {
       while (bytes + compressed.length > limit || cache.size >= 256) {
@@ -52,3 +56,6 @@ module.exports = function createCompression() {
     return {data:compressed, encoding, vary:true};
   };
 };
+module.exports.selectEncoding = selectEncoding;
+module.exports.isCompressible = extension => extensions.has(extension.toLowerCase());
+module.exports.compress = compress;

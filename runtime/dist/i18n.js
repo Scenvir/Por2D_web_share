@@ -2,6 +2,10 @@
 // UI messages only. Interpolated map names, room codes and chat remain literal text.
 const Por2I18n = (() => {
   const en = {
+    '本机性能面板（本次会话）':'Local performance panel (this session)',
+    'FPS 为页面刷新频率；RTT 为本机与服务的往返耗时；距同步帧为收到上一有效联机帧后的时间，不是网络延迟。仅显示本机数据，不保存；面板开启时每 5 秒发送一次测速请求。— 表示暂无测量。':'FPS is page refresh cadence; RTT is the round trip to the service. Frame age is time since the last valid online frame, not network latency. Only local diagnostics are shown, never saved; the visible panel sends a probe every 5 seconds. — means no measurement.',
+    '距同步帧':'Frame age',
+    '单机':'Offline',
     '连接已离开房间，请重新加入。':'You have left the room. Please rejoin.',
     '旧席位请求已忽略，请重新选择。':'An outdated seat request was ignored. Please choose again.',
     '关卡已更新，请等待同步后重新选择操作席。':'The level changed. Wait for synchronization before taking a seat.',

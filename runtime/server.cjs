@@ -4,15 +4,17 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const os = require('node:os');
+const {createOperations,createInitializationGate,createMapCatalog} = require('./server-operations.cjs');
+const RELEASE = require('./release.json');
 const {WebSocketServer, WebSocket} = require('ws');
 const PROTOCOL = 11;
 const MapModel = require('./dist/editor/model.js');
 // Log transport peers, never untrusted forwarding headers or message bodies.
-function connectionLog(ws, req, service) {
+function connectionLog(ws, req, service, trafficKind = 'live') {
   const connection = crypto.randomUUID(), ip = req.socket.remoteAddress;
   const started = Date.now();
   const log = (event, details = {}) => console.log(JSON.stringify({
-    time:new Date().toISOString(), service, event, connection, ip, ...details
+    time:new Date().toISOString(), service, event, connection, ip, trafficKind, ...details
   }));
   ws.log = log;
   log('connect');
@@ -29,7 +31,9 @@ function playableMap(text) {
 }
 
 function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000, readyTimeoutMs = 15000,
-  catchupTimeoutMs = 8000, maxCatchupLagFrames = 160, ackTimeoutMs = 8000} = {}) {
+  catchupTimeoutMs = 8000, maxCatchupLagFrames = 160, ackTimeoutMs = 8000,
+  trafficKind = 'live', initializationLimits = {}} = {}) {
+  trafficKind = trafficKind === 'test' ? 'test' : 'live';
   root = path.resolve(root);
   const createCore = require(path.join(root,'por2.js'));
   const catalogs = new WeakMap();
@@ -48,31 +52,27 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
     finally {core._free(ptr);}
   };
   const rooms = new Map();
-  const representation = require('./http-compression.cjs')();
+  const initializationGate = createInitializationGate(initializationLimits);
+  const mapCatalog = createMapCatalog(path.join(root,'levels'),playableMap);
+  const resources = require('./resource-cache.cjs')({root});
   const server = http.createServer(async (req,res) => {
     const requestStarted=performance.now();let pageRequest=false;
     res.once('finish',()=>{
       if(pageRequest && req.method==='GET') console.log(JSON.stringify({time:new Date().toISOString(),
         service:'http',event:'request',ip:req.socket.remoteAddress,kind:'page',status:res.statusCode,
-        durationMs:Math.round(performance.now()-requestStarted)}));
+        trafficKind,durationMs:Math.round(performance.now()-requestStarted)}));
     });
     // Errors and live API responses must never become cached static resources.
     res.setHeader('Cache-Control','no-store');
     try {
       if (!['GET','HEAD'].includes(req.method)) { res.writeHead(405); return res.end(); }
+      if(new URL(req.url,'http://localhost').pathname === '/healthz') {
+        res.setHeader('Content-Type','application/json;charset=utf-8');
+        return res.end(req.method==='HEAD'?undefined:JSON.stringify({status:'ok',version:RELEASE.version,protocol:PROTOCOL}));
+      }
       if(new URL(req.url,'http://localhost').pathname === '/api/maps') {
-        const directory=path.join(root,'levels'), maps=[];
-        if(fs.existsSync(directory))for(const file of fs.readdirSync(directory).sort()) {
-          if(maps.length>=20)break;
-          if(!file.toLowerCase().endsWith('.json'))continue;
-          try {
-            const filename=path.join(directory,file), real=fs.realpathSync(filename);
-            if(!real.startsWith(fs.realpathSync(directory)+path.sep)||fs.statSync(real).size>1048576)continue;
-            const json=playableMap(fs.readFileSync(real,'utf8'));maps.push({name:JSON.parse(json).name,json});
-          }catch(_){} // Incomplete drafts are not playable entries.
-        }
         res.setHeader('Content-Type','application/json;charset=utf-8');res.setHeader('Cache-Control','no-store');
-        return res.end(req.method==='HEAD'?undefined:JSON.stringify({maps}));
+        return res.end(req.method==='HEAD'?undefined:mapCatalog());
       }
       let file = path.resolve(root,'.'+decodeURIComponent(new URL(req.url,'http://localhost').pathname));
       if (file !== root && !file.startsWith(root+path.sep)) { res.writeHead(403); return res.end(); }
@@ -83,15 +83,14 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
       const type = {'.svg':'image/svg+xml', '.html':'text/html;charset=utf-8','.js':'text/javascript;charset=utf-8','.css':'text/css;charset=utf-8','.wasm':'application/wasm','.json':'application/json','.flac':'audio/flac','.opus':'audio/ogg'};
       res.setHeader('Content-Type',type[path.extname(file)] || 'text/plain;charset=utf-8');
       res.setHeader('X-Content-Type-Options','nosniff');
-      const data = fs.readFileSync(file);
-      const response = await representation(data, path.extname(file), req.headers['accept-encoding']);
+      const response = await resources(file, req.headers['accept-encoding']);
       if (response.vary) res.setHeader('Vary','Accept-Encoding');
       if (response.encoding) res.setHeader('Content-Encoding',response.encoding);
       if (!response.status) {
         // URLs are mutable: revalidate every use, never mark them immutable.
         // Hash the selected bytes, not mtime/size or only the uncompressed file,
         // so even same-size replacements and encoding changes cannot reuse stale data.
-        const etag = '"'+crypto.createHash('sha256').update(response.data).digest('base64url')+'"';
+        const etag = response.etag;
         res.setHeader('Cache-Control','no-cache, must-revalidate');
         res.setHeader('ETag',etag);
         const condition = req.headers['if-none-match'];
@@ -109,8 +108,10 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
       res.end(req.method === 'HEAD' ? undefined : '请求的页面或资源不存在。请检查访问地址。\nThe requested page or resource was not found. Please check the URL.');
     }
   });
-  const closeEditor = require('./editor-server.cjs')(server, connectionLog);
+  const closeEditor = require('./editor-server.cjs')(server, (ws,req,service)=>connectionLog(ws,req,service,trafficKind));
   const wss = new WebSocketServer({noServer:true,maxPayload:1052672,perMessageDeflate:false});
+  const operations = createOperations({log:entry=>console.log(JSON.stringify(entry)),
+    snapshot:()=>({rooms:rooms.size,connections:wss.clients.size,pendingInitializations:initializationGate.active})});
   server.on('upgrade',(req,socket,head) => {
     if(req.url === '/editor-coop') return;
     let validOrigin = true;
@@ -138,6 +139,7 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
   };
   const resetInput = ws => { ws.flags = 0; ws.pressedFlags = 0; ws.clearJump = true; ws.shots = []; ws.cursor = null; ws.spectate = false; };
   const beginCatchUp = (room,ws,retry = false) => {
+    if(!retry){ws.syncStarted=performance.now();ws.log('sync_start',{kind:'snapshot',session:ws.roomSession});}
     if(retry)ws.log('sync_retry',{session:ws.roomSession,lag:Math.max(0,room.sequence-ws.ack),retry:(ws.catchupRetries || 0)+1});
     const snapshot = room.core.UTF8ToString(room.core._web_snapshot());
     resetInput(ws); ws.ready = false; ws.ack = room.sequence;
@@ -150,6 +152,7 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
   const catchUp = (room,ws) => {
     if (!ws.catchingUp || !ws.snapshotReady || ws.ack !== ws.sentThrough) return;
     if (ws.ack === room.sequence) {
+      completeSync(ws);
       ws.catchingUp = false; ws.messages = 0; ws.ready = true; ws.lastAckProgress = performance.now(); status(room);
     } else {
       const end = Math.min(ws.ack+100,room.sequence);
@@ -157,6 +160,11 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
       for (let i=ws.ack;i<end;i++) send(ws,room.history[i-room.historyStart]);
       ws.sentThrough = end;
     }
+  };
+  const completeSync = ws => {
+    if(ws.syncStarted === undefined)return;
+    ws.log('sync_complete',{session:ws.roomSession,durationMs:Math.round(performance.now()-ws.syncStarted),retries:ws.catchupRetries||0,lag:0});
+    ws.syncStarted=undefined;
   };
   const endRoom = (ws,reason) => {
     const room = ws.room;
@@ -180,13 +188,15 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
     const previousOwners = room.owners;
     room.owners = Array.from({length:count(room)},(_,i)=>previousOwners[i] ?? (!previousOwners.length && i===0 ? 0 : -1));
     room.restart = false; room.checkpoint = false; room.clock = 0; room.lastTime = performance.now();
-    for (const ws of room.members) { resetInput(ws); ws.ack = 0; ws.ready = false; ws.catchingUp = false; ws.readySince = ws.lastAckProgress = performance.now(); }
+    for (const ws of room.members) { resetInput(ws); ws.ack = 0; ws.ready = false; ws.catchingUp = false; ws.catchupRetries=0; ws.syncStarted=performance.now(); ws.log('sync_start',{kind:'initial',session:ws.roomSession}); ws.readySince = ws.lastAckProgress = performance.now(); }
     broadcast(room,startMessage(room));
     status(room);
     scheduleRooms();
   };
   wss.on('connection',(ws,req) => {
-    connectionLog(ws,req,'game');
+    connectionLog(ws,req,'game',trafficKind);
+    const connectionLogger=ws.log;
+    ws.log=(event,details)=>{operations.record(event);connectionLogger(event,details);};
     ws.memberId = crypto.randomUUID(); ws.idleSince = performance.now(); ws.bytes = 0; ws.joinAttempts = 0;
     ws.room = null; ws.alive = true; ws.messages = 0; ws.window = Date.now();
     ws.ready = false; ws.ack = 0; ws.lastChat = -Infinity; resetInput(ws);
@@ -202,6 +212,13 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
         if (++ws.messages > (ws.catchingUp ? 20000 : 200) || binary) { ws.logCloseReason = 'invalid_traffic'; return ws.close(1008,'Invalid traffic'); }
         const msg = JSON.parse(data.toString());
         if (!msg || typeof msg !== 'object') return;
+        if(!['create','map'].includes(msg.type) && data.length > 4096) { ws.logCloseReason = 'oversized_control'; return ws.close(1008,'Control message too large'); }
+        if(msg.type==='ping') {
+          if(Number.isSafeInteger(msg.id) && msg.id>=0 && performance.now()-(ws.lastAppPing??-Infinity)>=1000) {
+            ws.lastAppPing=performance.now();send(ws,{type:'pong',id:msg.id});
+          }
+          return;
+        }
         const error = text => send(ws,{type:'error',message:text});
         const requestId=Number.isSafeInteger(msg.requestId) && msg.requestId>=0 ? msg.requestId : undefined;
         const seatResult = (ok,message) => {
@@ -212,7 +229,6 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
           send(ws,result);
         };
         const seatError = text => { error(text); seatResult(false,text); };
-        if(!['create','map'].includes(msg.type) && data.length > 4096) { ws.logCloseReason = 'oversized_control'; return ws.close(1008,'Control message too large'); }
         if (msg.type === 'create' || msg.type === 'join') {
           if (ws.room || ws.joinPending) return error('请先离开当前房间或等待加载。');
           if(++ws.joinAttempts > 10) { ws.logCloseReason = 'join_attempt_limit'; return ws.close(1008,'Too many attempts'); }
@@ -227,9 +243,12 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
             let code = (msg.code || '').trim().toUpperCase();
             if(code && !/^[A-Z0-9_-]{1,16}$/.test(code)) return error('房间编号须为 1–16 位字母、数字、横线或下划线。');
             if(code && rooms.has(code)) return error('房间编号已被使用。');
+            const releaseInitialization=initializationGate.acquire(req.socket.remoteAddress);
+            if(!releaseInitialization)return error('房间正在加载或创建较频繁，请稍后重试。');
             ws.joinPending = true;
-            const core = await createCore();
-            ws.joinPending = false;
+            let core;
+            try {core = await createCore();}
+            finally {ws.joinPending = false;releaseInitialization();}
             if (!custom && !validLevel(core,msg)) return error('无效关卡。');
             if(ws.readyState !== WebSocket.OPEN)return;
             if(rooms.size >= 16)return error('房间已满，请稍后重试。');
@@ -324,7 +343,7 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
         if (msg.type === 'ready') {
           const wasBlocked = room.members.some(peer => !peer.ready && !peer.catchingUp);
           if (ws.catchingUp) { ws.snapshotReady = true; catchUp(room,ws); }
-          else { ws.ready = true; ws.lastAckProgress = performance.now(); }
+          else { completeSync(ws); ws.ready = true; ws.lastAckProgress = performance.now(); }
           if (wasBlocked) { room.clock = 0; room.lastTime = performance.now(); }
           scheduleRooms();
           status(room); return;
@@ -418,8 +437,10 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
           endRoom(peer,'设备或网络暂时无法跟上房间，已释放操作席。请重试加入或降低房间速度。');
         }
       }
-      for (const peer of [...room.members]) if (!peer.ready && !peer.catchingUp && now-peer.readySince > readyTimeoutMs)
+      for (const peer of [...room.members]) if (!peer.ready && !peer.catchingUp && now-peer.readySince > readyTimeoutMs) {
+        peer.log('sync_timeout',{session:peer.roomSession,reason:'initial_ready_timeout',lag:0});
         endRoom(peer,'加载长时间未就绪，请重新加入。');
+      }
       // Wall time matters at slow room speeds too. A suspended client must not
       // hold a seat for the 250-frame limit (over a minute at 0.1x).
       for (const peer of [...room.members]) if (peer.ready && !peer.catchingUp && room.sequence > peer.ack && now-peer.lastAckProgress > ackTimeoutMs) {
@@ -498,6 +519,7 @@ function createServer({root = path.join(__dirname,'dist'), idleTimeoutMs = 15000
     }
   },Math.min(1000,idleTimeoutMs));
   async function close() {
+    operations.close();
     closing = true; clearTimeout(timer);
     await closeEditor();
     clearInterval(heartbeat); clearInterval(idleTimer); clearInterval(cursorTimer);

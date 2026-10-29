@@ -40,7 +40,8 @@ function createSummary(options = {}) {
   const result={date:bounds.date,timeZone:bounds.timeZone,observedIPs:0,pageIPs:0,pageViews:0,pageErrors:0,gameIPs:0,
     gameConnectionsStarted:0,roomSessionsStarted:0,closedGameConnections:0,closedRoomSessions:0,
     closedGameConnectionSeconds:0,closedRoomSeconds:0,unclosedGameConnections:0,unclosedRoomSessions:0,
-    syncRetries:0,syncTimeouts:0,seatFailures:0,abnormalDisconnects:0,ignoredLines:0};
+    syncRetries:0,syncTimeouts:0,seatFailures:0,abnormalDisconnects:0,ignoredLines:0,excludedTestEvents:0,
+    syncCompleted:0,syncDurationMsTotal:0,syncDurationMsMax:0,syncUnder1s:0,sync1to5s:0,sync5to15s:0,sync15sPlus:0};
   const inDay=time=>time>=bounds.start&&time<bounds.end;
   const overlap=(start,end)=>Math.max(0,Math.min(end,bounds.end,now)-Math.max(start,bounds.start));
   const ipOf=event=>typeof event.ip==='string'?event.ip.replace(/^::ffff:/,''):null;
@@ -60,6 +61,8 @@ function createSummary(options = {}) {
       if(!event) {result.ignoredLines++;return;}
       const time=Date.parse(event.time), inside=inDay(time), ip=ipOf(event);
       if(!Number.isFinite(time)) {result.ignoredLines++;return;}
+      // Trusted server process option only; never derived from client headers or messages.
+      if(event.trafficKind==='test') {if(inside)result.excludedTestEvents++;return;}
       if(inside && ip)ips.add(ip);
       if(event.service==='http' && event.event==='request' && event.kind==='page' && inside) {
         if(event.status>=200&&event.status<400) {result.pageViews++;if(ip)pageIps.add(ip);}
@@ -89,6 +92,11 @@ function createSummary(options = {}) {
         if(inside && event.reason!=='normal_close')result.abnormalDisconnects++;
       }
       if(inside) {
+        if(event.event==='sync_complete' && Number.isFinite(event.durationMs) && event.durationMs>=0) {
+          const ms=event.durationMs;
+          result.syncCompleted++;result.syncDurationMsTotal+=ms;result.syncDurationMsMax=Math.max(result.syncDurationMsMax,ms);
+          result[ms<1000?'syncUnder1s':ms<5000?'sync1to5s':ms<15000?'sync5to15s':'sync15sPlus']++;
+        }
         if(event.event==='sync_retry')result.syncRetries++;
         if(event.event==='sync_timeout')result.syncTimeouts++;
         if(event.event==='seat_result'&&event.ok===false)result.seatFailures++;
@@ -119,6 +127,8 @@ function formatSummary(s) {
     `已结束房间会话：${s.closedRoomSessions}，当日重叠时长合计 ${duration(s.closedRoomSeconds)}`,
     `日志中尚无结束记录：游戏连接 ${s.unclosedGameConnections}，房间会话 ${s.unclosedRoomSessions}（不纳入时长）`,
     `同步重试 ${s.syncRetries}；同步超时 ${s.syncTimeouts}；切席失败 ${s.seatFailures}；非正常断连 ${s.abnormalDisconnects}`,
+    `同步完成 ${s.syncCompleted}；耗时分布 <1秒 ${s.syncUnder1s}，1–5秒 ${s.sync1to5s}，5–15秒 ${s.sync5to15s}，≥15秒 ${s.sync15sPlus}（仅完成同步）`,
+    `排除的服务端标记测试事件：${s.excludedTestEvents}`,
     '口径：IP 不等于人数；刷新会增加网页次数。连接/房间时长包含观战、菜单和空闲，不等于有效游玩时长。',
     '仅统计提供且保留的日志；历史版本无页面日志，不能补算访问量。缺失结束记录可能是仍在线，也可能是重启或日志不完整。'
   ].join('\n');

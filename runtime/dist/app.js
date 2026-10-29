@@ -1,8 +1,33 @@
 'use strict';
+// Diagnostic sampling is independent of simulation speed and never advances physics.
+class Por2ClientPerformance {
+  constructor() { this.reset(); }
+  reset() { this.since = null; this.frames = 0; this.fps = null; }
+  sample(now) {
+    if (this.since === null) { this.since = now; return false; }
+    this.frames++;
+    const elapsed = now-this.since;
+    if (elapsed < 500) return false;
+    this.fps = Math.round(this.frames*1000/elapsed);
+    this.since = now; this.frames = 0;
+    return true;
+  }
+}
 (() => {
   const $ = id => document.getElementById(id);
   const canvas = $('game'), ctx = canvas.getContext('2d', {alpha: false});
   const menu = $('menu');
+  const clientPerformance = new Por2ClientPerformance();
+  let showPerformance = false;
+  function updatePerformance(now = performance.now()) {
+    const panel = $('client-performance');
+    panel.hidden = !showPerformance;
+    if (!showPerformance) return;
+    if (!document.hidden) net.sampleDiagnostics(now);
+    const age = net.frameAge(now);
+    const connection = !net.connected ? t('单机') : !net.active ? t('正在连接…') : net.paused ? t('正在同步关卡…') : age === null ? '—' : `${Math.round(age)} ms`;
+    panel.textContent = `FPS ${clientPerformance.fps ?? '—'} · RTT ${net.rtt === null ? '—' : `${net.rtt} ms`}\n${t('距同步帧')} ${connection}`;
+  }
   const defaultBindings = {left:'KeyA', right:'KeyD', jump:'KeyW', down:'KeyS', exit:'KeyE', restart:'KeyR', checkpoint:'KeyC', preview:'KeyQ', blue:'KeyZ', orange:'KeyX', wallDirections:'KeyT'};
   const actionNames = {left:'向左', right:'向右', jump:'向上 / 跳跃', down:'向下', exit:'交互 / 进入出口', restart:'返回检查点／重试', checkpoint:'保存检查点', preview:'预览', blue:'蓝门', orange:'橙门', wallDirections:'全局门方向'};
   const storageKey = 'por2-web-v1';
@@ -875,6 +900,7 @@
     if (armed.delete(code) && !cancelled && running() && aim) shoot(code === prefs.bindings.orange ? 1 : 0,aim.x,aim.y);
   }
   function frame(now) {
+    if (showPerformance && !document.hidden && clientPerformance.sample(now)) updatePerformance(now);
     if(emoteWheel || emotes.length || chatBubbles.length) {
       emotes=emotes.filter(e=>now-e.born<3600);dirty=true;
       chatBubbles=chatBubbles.filter(b=>now-b.born<5000);
@@ -1090,6 +1116,14 @@
   $('orientation-button').onclick = () => { landscapeEnabled = !landscapeEnabled; updateOrientation(); };
   document.addEventListener('fullscreenchange',updateOrientation);
   $('speed').value = prefs.speed;
+  $('performance-toggle').onchange = e => {
+    showPerformance = e.target.checked; clientPerformance.reset(); net.resetDiagnostics(); updatePerformance();
+  };
+  document.addEventListener('visibilitychange',() => {
+    clientPerformance.reset();
+    net.resetDiagnostics();
+    if (showPerformance) updatePerformance();
+  });
   $('shotFeedback').checked = prefs.shotFeedback;
   $('shotFeedback').onchange = e => {
     prefs.shotFeedback = e.target.checked;
@@ -1101,6 +1135,7 @@
   $('language').onchange = e => {
     prefs.language = e.target.value; clearInput(); rebind = null;
     Por2I18n.setLanguage(prefs.language);
+    updatePerformance();
     catalogChapter = 0; drawBindings(); updateVolume(); updateOrientation();
     renderMembers(); updateChatLabels(); sync(); save(); dirty = true;
     if(net.code) $('coop-room').textContent = t`房间码：${net.code} · 你是 P${net.player+1}${!net.active ? t(' · 等待队友') : ''}`;
