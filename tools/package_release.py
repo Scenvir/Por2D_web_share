@@ -8,7 +8,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 NAME = 'Por2D-Web-Coop-Share'
-TOP = {'README.md', 'PLAYER-GUIDE.md', 'START-HERE.txt', 'start-local.cmd',
+TOP = {'README.md', '统计访问.txt', 'START-HERE.txt', 'start-local.cmd',
        'start-lan.cmd', '如何双人联机.txt'}
 
 

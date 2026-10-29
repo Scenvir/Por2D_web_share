@@ -9,6 +9,11 @@ on:
         description: 'New release tag, for example v2026.10.23'
         required: true
         type: string
+      prerelease:
+        description: 'Publish a testing prerelease (never Latest)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -28,16 +33,27 @@ jobs:
       - name: Validate release tag
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          REQUEST_PRERELEASE: ${{ inputs.prerelease || false }}
         run: |
+          set -euo pipefail
           if [[ ! "$RELEASE_TAG" =~ ^v[0-9][A-Za-z0-9._-]*$ ]]; then
             echo 'Use a tag starting with v and a digit, followed by letters, digits, dots, underscores or hyphens.' >&2
             exit 1
           fi
           printf 'RELEASE_TAG=%s\n' "$RELEASE_TAG" >> "$GITHUB_ENV"
+          # A hyphenated version suffix is always a prerelease, even if unchecked.
+          IS_PRERELEASE=false
+          if [[ "$REQUEST_PRERELEASE" == true || "$RELEASE_TAG" == *-* ]]; then
+            IS_PRERELEASE=true
+          fi
+          printf 'IS_PRERELEASE=%s\n' "$IS_PRERELEASE" >> "$GITHUB_ENV"
       - name: Package and verify ZIP
         run: python3 tools/package_release.py
       - name: Prepare release notes
         run: |
+          if [[ -f ".github/release-notes/$RELEASE_TAG.md" ]]; then
+            cp ".github/release-notes/$RELEASE_TAG.md" release/notes.md
+          else
           cat > release/notes.md <<'EOF'
           ## 中文
           下载 `Por2D-Web-Coop-Share.zip`，完整解压后按 `START-HERE.txt` 启动。
@@ -51,6 +67,7 @@ jobs:
           Includes the game runtime, player guides, and developer/ interface documentation.
           File hashes, ZIP integrity, and packaged contents are verified automatically; gameplay and launch tests are not run.
           EOF
+          fi
           printf '\nCommit: `%s`\n' "$GITHUB_SHA" >> release/notes.md
       - name: Publish release
         env:
@@ -64,7 +81,11 @@ jobs:
             exit 1
           fi
           # Existing releases are never overwritten. Failed uploads leave a draft.
+          release_flags=(--prerelease=false --latest)
+          if [[ "$IS_PRERELEASE" == true ]]; then
+            release_flags=(--prerelease=true --latest=false)
+          fi
           gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --draft \
-            --title "Por2D Web $RELEASE_TAG" --notes-file release/notes.md
+            --title "Por2D Web $RELEASE_TAG" --notes-file release/notes.md "${release_flags[@]}"
           gh release upload "$RELEASE_TAG" release/Por2D-Web-Coop-Share.zip release/Por2D-Web-Coop-Share.zip.sha256
-          gh release edit "$RELEASE_TAG" --draft=false --latest
+          gh release edit "$RELEASE_TAG" --draft=false "${release_flags[@]}"
